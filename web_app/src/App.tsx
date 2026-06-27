@@ -209,6 +209,31 @@ export default function App() {
     showToast("AI Memory created!");
   };
 
+  const generateSmartCaption = () => {
+    setAiMenuOpen(false);
+    if (snaps.length === 0) {
+      showToast("Take a photo first!");
+      return;
+    }
+    showToast("Gemini Nano analyzing image...");
+    setTimeout(() => {
+      setSnaps(prev => {
+        const newSnaps = [...prev];
+        if (newSnaps.length > 0) {
+          const aiCaptions = [
+            "A breathtaking view captured in the moment. ✨",
+            "Vibrant colors and perfect lighting! 📸",
+            "A spontaneous memory that tells a thousand words."
+          ];
+          newSnaps[0].caption = aiCaptions[Math.floor(Math.random() * aiCaptions.length)];
+          newSnaps[0].tags = [...newSnaps[0].tags, 'gemini-nano', 'smart-caption'];
+        }
+        return newSnaps;
+      });
+      showToast("Smart Caption added!");
+    }, 1500);
+  };
+
   useEffect(() => {
     if (activeTab === 'studio' && editorSnapId) {
       const snap = snaps.find(s => s.id === editorSnapId);
@@ -424,6 +449,10 @@ export default function App() {
               <button className="close-btn" onClick={() => setAiMenuOpen(false)}>&times;</button>
             </div>
             <div className="ai-grid">
+              <div className="ai-option" onClick={generateSmartCaption}>
+                <div className="ai-option-title"><i className="fa-solid fa-robot text-accent-1"></i> Gemini Nano</div>
+                <div className="ai-option-desc">Auto-generate a smart description</div>
+              </div>
               <div className="ai-option" onClick={() => { setAiMenuOpen(false); showToast("Magic Editor applied!"); }}>
                 <div className="ai-option-title"><i className="fa-solid fa-wand-magic-sparkles text-accent-1"></i> Magic Editor</div>
                 <div className="ai-option-desc">Remove objects, perfect lighting</div>
