@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">PixelSnap</string>
+    <string name="camera">Camera</string>
+    <string name="gallery">Gallery</string>
+    <string name="capture">Capture</string>
+    <string name="analyze">Analyze with AI</string>
+    <string name="retake">Retake</string>
+    <string name="save_snap">Save Snap</string>
+    <string name="no_snaps_yet">No snaps yet</string>
+    <string name="no_snaps_subtitle">Tap the camera tab to capture your first moment</string>
+    <string name="share">Share</string>
+    <string name="delete">Delete</string>
+    <string name="caption_hint">Add a caption…</string>
+    <string name="tags_hint">Tags (comma separated)</string>
+    <string name="ai_caption_ready">AI caption ready</string>
+</resources>

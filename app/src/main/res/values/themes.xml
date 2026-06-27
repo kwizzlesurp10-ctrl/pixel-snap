@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. Dynamic color is enabled on Pixel 9+ via Material You -->
+    <style name="Theme.PixelSnap" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Primary brand (will be overridden by dynamic colors) -->
+        <item name="colorPrimary">@color/md_theme_primary</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <!-- Edge to edge friendly -->
+    </style>
+</resources>

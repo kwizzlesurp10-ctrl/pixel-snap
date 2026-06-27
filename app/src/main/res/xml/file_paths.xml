@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Allow sharing photos saved in our private snaps directory via FileProvider -->
+    <files-path name="snaps" path="snaps/" />
+</paths>

@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+local.properties
+!gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Keystore
+*.jks
+*.keystore
+
+# Misc
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.log
+
+# Android
+*.apk
+*.ap_
+*.aab
+output.json
+
+# Generated
+app/release/
+app/debug/
+.vercel

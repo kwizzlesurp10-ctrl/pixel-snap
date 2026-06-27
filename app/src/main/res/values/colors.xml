@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base colors - overridden by dynamic Material You on Pixel -->
+    <color name="md_theme_primary">#006E5C</color>
+    <color name="md_theme_onPrimary">#FFFFFF</color>
+    <color name="md_theme_background">#FAFDFB</color>
+    <color name="md_theme_onBackground">#191C1B</color>
+    <color name="md_theme_surface">#FAFDFB</color>
+    <color name="md_theme_onSurface">#191C1B</color>
+</resources>

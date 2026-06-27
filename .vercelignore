@@ -1,0 +1,10 @@
+# Exclude Android build directories and gradle files
+app/
+gradle/
+build.gradle.kts
+settings.gradle.kts
+gradle.properties
+LICENSE
+README.md
+.gitignore
+.agents/

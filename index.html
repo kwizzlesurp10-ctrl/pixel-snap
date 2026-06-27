@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PixelSnap • Full Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap');
+        
+        :root {
+            --pixel-bg: #000000;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, -apple-system, sans-serif;
+        }
+        
+        .font-display {
+            font-family: 'Space Grotesk', 'Inter', system_ui, sans-serif;
+            font-weight: 600;
+        }
+
+        .pixel-card {
+            background: #000000;
+            border: 1px solid #27272a;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                        box-shadow 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+
+        .pixel-card:active {
+            transform: scale(0.985);
+        }
+
+        .nav-active {
+            color: #fff;
+            position: relative;
+        }
+        
+        .nav-active:after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 22px;
+            height: 3px;
+            background: linear-gradient(to right, #14b8a6, #6366f1);
+            border-radius: 999px;
+        }
+
+        .material-shadow {
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.15),
+                        0 4px 6px -4px rgb(0 0 0 / 0.15);
+        }
+
+        .snap-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .snap-item {
+            aspect-ratio: 1;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000000;
+            border: 1px solid #27272a;
+            position: relative;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .snap-item img, .snap-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .camera-container {
+            background: #000;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px #222, 0 25px 50px -12px rgb(0 0 0 / 0.4);
+            position: relative;
+        }
+
+        .capture-btn {
+            width: 78px;
+            height: 78px;
+            background: white;
+            border: 6px solid #1f2429;
+            border-radius: 9999px;
+            transition: transform 0.1s ease, background 0.2s;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3),
+                        0 4px 6px -4px rgb(0 0 0 / 0.3);
+        }
+        
+        .capture-btn:active {
+            transform: scale(0.9);
+            background: #e5e7eb;
+        }
+
+        .pixel-header {
+            background: linear-gradient(to bottom, #0a0c0f, transparent);
+        }
+
+        .section {
+            display: none;
+        }
+        .section.active {
+            display: block;
+        }
+
+        .ai-badge {
+            background: linear-gradient(90deg, #14b8a6, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .status-bar {
+            height: 32px;
+            background: #000000;
+        }
+
+        .phone-frame {
+            max-width: 390px;
+            margin: 0 auto;
+            background: #000000;
+            border-radius: 60px;
+            padding: 12px;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.5),
+                        0 0 0 1px #222;
+        }
+
+        .bottom-nav {
+            background: #000000;
+            border-top: 1px solid #1f2429;
+        }
+
+        .mode-btn {
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(to right, #14b8a6, #6366f1);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgb(20 184 166 / 0.3);
+        }
+
+        .ai-option {
+            transition: all 0.2s;
+        }
+        .ai-option:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        }
+
+        .canvas-editor {
+            border-radius: 16px;
+            overflow: hidden;
+            background: #000;
+            box-shadow: inset 0 0 0 1px #333;
+        }
+
+        .filter-btn {
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 8px;
+            background: #000000;
+            border: 1px solid #27272a;
+        }
+
+        .memory-card {
+            background: #000000;
+            border: 1px solid #27272a;
+        }
+
+        .premium-gradient {
+            background: linear-gradient(90deg, #14b8a6, #6366f1, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-[#000000] text-white min-h-screen pb-12">
+    <!-- Phone frame simulation -->
+    <div class="max-w-[400px] mx-auto pt-8 px-3">
+        <!-- Status bar -->
+        <div class="status-bar rounded-t-3xl flex items-center justify-between px-6 text-[10px] font-medium text-zinc-400">
+            <div>9:41</div>
+            <div class="flex items-center gap-x-1.5">
+                <i class="fa-solid fa-signal"></i>
+                <i class="fa-solid fa-wifi"></i>
+                <i class="fa-solid fa-battery-three-quarters"></i>
+            </div>
+        </div>
+
+        <div class="phone-frame">
+            <!-- App header -->
+            <div class="px-5 pt-5 pb-2 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <div class="w-9 h-9 rounded-2xl overflow-hidden ring-1 ring-white/10">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='20' y1='20' x2='80' y2='80'%3E%3Cstop offset='0%25' stop-color='%2314b8a6'/%3E%3Cstop offset='50%25' stop-color='%236366f1'/%3E%3Cstop offset='100%25' stop-color='%23ec4899'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='24' fill='%23111418'/%3E%3Ccircle cx='50' cy='50' r='26' fill='none' stroke='url(%23g)' stroke-width='9'/%3E%3Ccircle cx='50' cy='50' r='13' fill='%23fff'/%3E%3Cpath d='M35 65 Q50 50 65 65' fill='none' stroke='%2314b8a6' stroke-width='4'/%3E%3C/svg%3E" class="w-full h-full object-cover" alt="PixelSnap icon">
+                    </div>
+                    <div>
+                        <div class="font-display text-3xl tracking-tighter font-semibold">PixelSnap</div>
+                        <div class="text-[10px] text-emerald-400 -mt-1 flex items-center gap-1">
+                            <span>FULL EXPERIENCE</span> 
+                            <span class="text-[8px] px-1 py-px bg-emerald-500/20 rounded text-emerald-400">v2.0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-2 text-sm">
+                    <div onclick="showSettings()" class="w-9 h-9 flex items-center justify-center bg-white/5 hover:bg-white/10 active:bg-white/15 rounded-2xl cursor-pointer">
+                        <i class="fa-solid fa-cog text-white/70"></i>
+                    </div>
+                    <div class="px-3 py-1 rounded-full bg-white/5 text-xs font-medium flex items-center gap-1.5">
+                        <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                        <span>Pixel 9</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main content area -->
+            <div class="px-3 pt-2 pb-4 min-h-[520px]">
+                
+                <!-- CAMERA SECTION -->
+                <div id="section-camera" class="section active">
+                    <div class="px-1 mb-3 flex items-center justify-between">
+                        <div class="font-semibold text-xl tracking-tight">Capture</div>
+                        <div class="flex gap-1 bg-[#000000] border border-white/10 rounded-2xl p-1 text-xs">
+                            <div onclick="setCaptureMode('photo')" id="mode-photo" class="mode-btn px-3 py-1 active bg-gradient-to-r from-teal-500 to-indigo-500 text-white cursor-pointer">Photo</div>
+                            <div onclick="setCaptureMode('video')" id="mode-video" class="mode-btn px-3 py-1 cursor-pointer hover:bg-white/5">Video</div>
+                            <div onclick="setCaptureMode('portrait')" id="mode-portrait" class="mode-btn px-3 py-1 cursor-pointer hover:bg-white/5">Portrait</div>
+                        </div>
+                    </div>
+
+                    <div class="camera-container aspect-[3/4] relative overflow-hidden mx-auto max-w-[320px] shadow-2xl" style="max-height: 420px;">
+                        <video id="camera-feed" autoplay playsinline class="w-full h-full object-cover"></video>
+                        
+                        <!-- Overlays -->
+                        <div class="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60 pointer-events-none"></div>
+                        
+                        <!-- Top info -->
+                        <div class="absolute top-4 left-4 right-4 flex justify-between items-center z-10">
+                            <div class="px-3 py-1 bg-black/60 backdrop-blur-lg rounded-2xl text-xs font-medium flex items-center gap-2">
+                                <i class="fa-solid fa-video text-emerald-400"></i>
+                                <span id="camera-info">50MP • Tensor G4 • 4K</span>
+                            </div>
+                            <div onclick="toggleFlash()" class="w-9 h-9 flex items-center justify-center bg-black/60 backdrop-blur-lg rounded-2xl cursor-pointer">
+                                <i id="flash-icon" class="fa-solid fa-bolt text-white text-sm"></i>
+                            </div>
+                        </div>
+
+                        <!-- Recording indicator -->
+                        <div id="recording-indicator" class="hidden absolute top-4 right-4 bg-red-500 text-white text-xs px-3 py-1 rounded-full flex items-center gap-2 z-20">
+                            <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                            <span id="record-time">00:00</span>
+                        </div>
+
+                        <!-- Center focus / guides -->
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 border border-white/30 rounded-2xl pointer-events-none z-10"></div>
+                        
+                        <!-- Bottom controls -->
+                        <div class="absolute bottom-0 inset-x-0 p-5 flex flex-col items-center z-20">
+                            <div class="flex items-center gap-4 mb-4 w-full justify-center">
+                                <button onclick="retakeFromCamera()" 
+                                        class="text-sm px-5 py-2 rounded-2xl bg-white/10 backdrop-blur active:bg-white/20 transition-colors">
+                                    <span class="font-medium">Retake</span>
+                                </button>
+                                
+                                <button onclick="captureOrRecord()" 
+                                        class="capture-btn flex items-center justify-center shadow-xl" id="capture-button">
+                                    <div class="w-7 h-7 bg-[#1a1f24] rounded-full" id="capture-inner"></div>
+                                </button>
+                                
+                                <div class="relative">
+                                    <button onclick="showAIAnalyzeMenu()" 
+                                            class="text-sm px-5 py-[9px] rounded-2xl font-semibold bg-gradient-to-r from-teal-500 to-indigo-500 active:brightness-110 transition-all flex items-center gap-2">
+                                        <i class="fa-solid fa-magic"></i>
+                                        <span>Pixel AI</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="text-[10px] text-white/50 font-medium tracking-[1px] flex items-center gap-2">
+                                <span id="mode-label">PHOTO MODE</span> 
+                                <span class="text-[8px]">•</span> 
+                                <span>PIXEL 9 EXCLUSIVE</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center mt-3 text-xs text-zinc-400 px-1">
+                        Real hardware camera • Shake phone to capture
+                    </div>
+                </div>
+
+                <!-- GALLERY SECTION -->
+                <div id="section-gallery" class="section">
+                    <div class="flex items-center justify-between mb-3 px-1">
+                        <div>
+                            <div class="font-semibold text-xl tracking-tight">Gallery</div>
+                            <div id="gallery-count" class="text-xs text-zinc-400">0 moments • 3 albums</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="showAlbumsModal()" class="px-4 py-2 rounded-2xl text-xs font-semibold bg-white/5 hover:bg-white/10 flex items-center gap-2">
+                                <i class="fa-solid fa-folder"></i>
+                                <span>Albums</span>
+                            </button>
+                            <button onclick="switchTab('camera')" class="px-4 py-2 rounded-2xl text-xs font-semibold bg-white/5 hover:bg-white/10 active:bg-white/15 flex items-center gap-2">
+                                <i class="fa-solid fa-plus"></i>
+                                <span>New</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Search and filters -->
+                    <div class="mb-3 flex gap-2">
+                        <input id="gallery-search" type="text" placeholder="Search moments, tags, people..." 
+                               oninput="filterGallery()" 
+                               class="flex-1 bg-[#000000] border border-white/10 text-sm rounded-2xl px-4 py-2 outline-none placeholder:text-white/30">
+                        <button onclick="toggleFavoritesFilter()" id="fav-filter-btn" 
+                                class="px-4 rounded-2xl bg-[#000000] border border-white/10 text-sm flex items-center">
+                            <i class="fa-solid fa-heart"></i>
+                        </button>
+                    </div>
+
+                    <div id="gallery-grid" class="snap-grid">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div id="gallery-empty" class="hidden text-center py-12">
+                        <i class="fa-regular fa-images text-5xl text-white/10 mb-3"></i>
+                        <div class="font-medium text-white/70">Your story starts here</div>
+                        <div class="text-xs text-white/40 mt-1 max-w-[220px] mx-auto">Capture with Pixel 9 and let PixelSnap organize the magic</div>
+                        <button onclick="switchTab('camera')" class="mt-5 px-6 py-2.5 rounded-3xl text-sm font-semibold bg-white/5 hover:bg-white/10">
+                            Open Camera
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MEMORIES SECTION (AI powered) -->
+                <div id="section-memories" class="section">
+                    <div class="px-1 mb-4">
+                        <div class="font-semibold text-xl tracking-tight mb-1">Memories</div>
+                        <div class="text-xs text-zinc-400">AI-curated stories from your Pixel 9 life</div>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- AI Memory Cards -->
+                        <div onclick="generateAIMemory('week')" class="memory-card p-4 rounded-3xl border border-white/10 cursor-pointer active:scale-[0.985]">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-semibold">This Week on Pixel 9</div>
+                                    <div class="text-xs text-emerald-400">12 moments • 4 locations</div>
+                                </div>
+                                <i class="fa-solid fa-magic text-xl text-emerald-400"></i>
+                            </div>
+                            <div class="text-xs text-white/50 mt-3">Auto-generated highlight reel with music &amp; captions</div>
+                        </div>
+
+                        <div onclick="generateAIMemory('story')" class="memory-card p-4 rounded-3xl border border-white/10 cursor-pointer active:scale-[0.985]">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-semibold">"Golden Hour" Story</div>
+                                    <div class="text-xs text-emerald-400">Based on 7 snaps this month</div>
+                                </div>
+                                <i class="fa-solid fa-book text-xl text-emerald-400"></i>
+                            </div>
+                            <div class="text-xs text-white/50 mt-3">Narrative with AI voiceover + best edits</div>
+                        </div>
+
+                        <div onclick="generateAIMemory('best-of')" class="memory-card p-4 rounded-3xl border border-white/10 cursor-pointer active:scale-[0.985]">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <div class="font-semibold">Best of 2026</div>
+                                    <div class="text-xs text-emerald-400">Your top 20 moments</div>
+                                </div>
+                                <i class="fa-solid fa-trophy text-xl text-emerald-400"></i>
+                            </div>
+                            <div class="text-xs text-white/50 mt-3">Ranked by AI using light, emotion &amp; composition</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-5 text-center">
+                        <button onclick="createMemoryBook()" class="px-6 py-2.5 text-sm rounded-2xl bg-gradient-to-r from-teal-500/80 to-indigo-500/80 font-medium flex items-center gap-2 mx-auto">
+                            <i class="fa-solid fa-file-pdf"></i>
+                            <span>Export Memory Book (PDF)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STUDIO / EDITOR SECTION -->
+                <div id="section-studio" class="section">
+                    <div class="px-1 mb-3">
+                        <div class="flex items-center justify-between">
+                            <div class="font-semibold text-xl tracking-tight">Studio</div>
+                            <button onclick="closeStudio()" class="text-xs px-4 py-1 rounded-full bg-white/10">Done</button>
+                        </div>
+                        <div id="studio-snap-info" class="text-xs text-zinc-400"></div>
+                    </div>
+
+                    <div class="canvas-editor mx-auto max-w-[320px]">
+                        <canvas id="editor-canvas" width="800" height="800" class="w-full touch-none"></canvas>
+                    </div>
+
+                    <!-- Editing tools -->
+                    <div class="mt-4 px-2">
+                        <div class="text-xs font-medium text-zinc-400 mb-2 px-1">PIXEL AI ENHANCE</div>
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button onclick="applyMagicEnhance('auto')" class="filter-btn flex-1">Auto Magic</button>
+                            <button onclick="applyMagicEnhance('portrait')" class="filter-btn flex-1">Portrait Pop</button>
+                            <button onclick="applyMagicEnhance('night')" class="filter-btn flex-1">Night Sight</button>
+                            <button onclick="applyMagicEnhance('erase')" class="filter-btn flex-1">Magic Eraser</button>
+                        </div>
+
+                        <div class="text-xs font-medium text-zinc-400 mb-2 px-1">CREATIVE TOOLS</div>
+                        <div class="grid grid-cols-4 gap-2 mb-4">
+                            <button onclick="applyFilter('none')" class="filter-btn">Original</button>
+                            <button onclick="applyFilter('vibrant')" class="filter-btn">Vibrant</button>
+                            <button onclick="applyFilter('warm')" class="filter-btn">Warm</button>
+                            <button onclick="applyFilter('dramatic')" class="filter-btn">Dramatic</button>
+                            <button onclick="applyFilter('noir')" class="filter-btn">Noir</button>
+                            <button onclick="applyFilter('pastel')" class="filter-btn">Pastel</button>
+                            <button onclick="applyFilter('cinema')" class="filter-btn">Cinema</button>
+                            <button onclick="applyFilter('pixel')" class="filter-btn">Pixel Art</button>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="flex justify-between text-xs px-1 mb-1.5">
+                                <span class="text-zinc-400">Brightness</span>
+                                <span id="bright-val">0</span>
+                            </div>
+                            <input type="range" min="-50" max="50" value="0" oninput="adjustBrightness(this.value)" class="w-full accent-teal-400">
+                        </div>
+
+                        <div class="flex gap-2">
+                            <button onclick="addTextToCanvas()" class="flex-1 py-2.5 rounded-2xl bg-white/5 text-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-font"></i> <span>Add Text</span>
+                            </button>
+                            <button onclick="addStickerToCanvas()" class="flex-1 py-2.5 rounded-2xl bg-white/5 text-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-smile"></i> <span>Sticker</span>
+                            </button>
+                        </div>
+
+                        <div class="flex gap-2 mt-2">
+                            <button onclick="cropCanvas()" class="flex-1 py-2.5 rounded-2xl bg-white/5 text-sm">Crop</button>
+                            <button onclick="saveEditedSnap()" class="flex-1 py-2.5 rounded-2xl bg-gradient-to-r from-teal-500 to-indigo-500 text-sm font-semibold">Save Edit</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom nav -->
+            <div class="bottom-nav rounded-b-3xl px-3 py-2 flex text-xs">
+                <div onclick="switchTab('camera')" class="flex-1 flex flex-col items-center py-1 cursor-pointer text-white/70 active:text-white" id="nav-camera">
+                    <i class="fa-solid fa-camera text-lg mb-0.5"></i>
+                    <span class="text-[10px]">Camera</span>
+                </div>
+                <div onclick="switchTab('gallery')" class="flex-1 flex flex-col items-center py-1 cursor-pointer text-white/70 active:text-white" id="nav-gallery">
+                    <i class="fa-solid fa-images text-lg mb-0.5"></i>
+                    <span class="text-[10px]">Gallery</span>
+                </div>
+                <div onclick="switchTab('memories')" class="flex-1 flex flex-col items-center py-1 cursor-pointer text-white/70 active:text-white" id="nav-memories">
+                    <i class="fa-solid fa-magic text-lg mb-0.5"></i>
+                    <span class="text-[10px]">Memories</span>
+                </div>
+                <div onclick="switchTab('studio')" class="flex-1 flex flex-col items-center py-1 cursor-pointer text-white/70 active:text-white" id="nav-studio">
+                    <i class="fa-solid fa-palette text-lg mb-0.5"></i>
+                    <span class="text-[10px]">Studio</span>
+                </div>
+                <a href="fractal_gallery.html" class="flex-1 flex flex-col items-center py-1 cursor-pointer text-white/70 active:text-white" id="nav-fractal">
+                    <i class="fa-solid fa-circle-nodes text-lg mb-0.5"></i>
+                    <span class="text-[10px]">Fractal</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Global toast area -->
+        <div id="toast-container" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-2"></div>
+    </div>
+
+    <!-- AI Analyze Menu Modal -->
+    <div id="ai-menu-modal" onclick="if (event.target.id === 'ai-menu-modal') hideAIAnalyzeMenu()" class="hidden fixed inset-0 bg-black/80 z-[999] flex items-end">
+        <div onclick="event.stopImmediatePropagation()" class="w-full bg-[#000000] border-t border-white/10 rounded-t-3xl p-5">
+            <div class="flex justify-between mb-4">
+                <div class="font-semibold">Pixel AI Tools</div>
+                <button onclick="hideAIAnalyzeMenu()" class="text-2xl leading-none text-white/60">×</button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div onclick="runAIAnalysis('describe')" class="ai-option p-3 bg-[#000000] border border-white/10 rounded-2xl cursor-pointer">
+                    <div class="font-medium flex items-center gap-2"><i class="fa-solid fa-eye"></i> Describe Scene</div>
+                    <div class="text-xs text-white/50 mt-1">Full scene understanding + mood</div>
+                </div>
+                <div onclick="runAIAnalysis('magic')" class="ai-option p-3 bg-[#000000] border border-white/10 rounded-2xl cursor-pointer">
+                    <div class="font-medium flex items-center gap-2"><i class="fa-solid fa-wand-magic-sparkles"></i> Magic Editor</div>
+                    <div class="text-xs text-white/50 mt-1">Remove objects, perfect lighting</div>
+                </div>
+                <div onclick="runAIAnalysis('besttake')" class="ai-option p-3 bg-[#000000] border border-white/10 rounded-2xl cursor-pointer">
+                    <div class="font-medium flex items-center gap-2"><i class="fa-solid fa-star"></i> Best Take</div>
+                    <div class="text-xs text-white/50 mt-1">Pick the perfect frame (video)</div>
+                </div>
+                <div onclick="runAIAnalysis('addme')" class="ai-option p-3 bg-[#000000] border border-white/10 rounded-2xl cursor-pointer">
+                    <div class="font-medium flex items-center gap-2"><i class="fa-solid fa-user-plus"></i> Add Me</div>
+                    <div class="text-xs text-white/50 mt-1">Insert yourself into group shots</div>
+                </div>
+                <div onclick="runAIAnalysis('erase')" class="ai-option p-3 bg-[#000000] border border-white/10 rounded-2xl cursor-pointer">
+                    <div class="font-medium flex items-center gap-2"><i class="fa-solid fa-eraser"></i> Audio Magic Eraser</div>
+                    <div class="text-xs text-white/50 mt-1">Clean background noise</div>
+                </div>
+                <div onclick="runAIAnalysis('story')" class="ai-option p-3 bg-[#000000] border border-white/10 rounded-2xl cursor-pointer">
+                    <div class="font-medium flex items-center gap-2"><i class="fa-solid fa-book-open"></i> Story Mode</div>
+                    <div class="text-xs text-white/50 mt-1">Turn snaps into a short narrative</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tailwind + state
+        function initTailwind() {
+            document.documentElement.style.setProperty('--accent', '#14b8a6');
+        }
+
+        let snaps = [];
+        let currentSnapId = null;
+        let currentStream = null;
+        let flashOn = false;
+        let captureMode = 'photo';
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+        let recordInterval = null;
+        let favoritesFilter = false;
+        let currentCanvasImage = null;
+        let canvasCtx = null;
+
+        // Persistence
+        function loadSnaps() {
+            try {
+                const saved = localStorage.getItem('pixelsnap_full_snaps');
+                snaps = saved ? JSON.parse(saved) : [];
+            } catch (e) {
+                snaps = [];
+            }
+        }
+
+        function saveSnaps() {
+            localStorage.setItem('pixelsnap_full_snaps', JSON.stringify(snaps));
+        }
+
+        function filterGallery() {
+            const search = document.getElementById('gallery-search').value.toLowerCase();
+            renderGallery(search);
+        }
+
+        function toggleFavoritesFilter() {
+            favoritesFilter = !favoritesFilter;
+            const btn = document.getElementById('fav-filter-btn');
+            if (favoritesFilter) {
+                btn.classList.add('!bg-red-500/20', '!border-red-500/40');
+            } else {
+                btn.classList.remove('!bg-red-500/20', '!border-red-500/40');
+            }
+            renderGallery(document.getElementById('gallery-search').value);
+        }
+
+        function renderGallery(searchTerm = '') {
+            const grid = document.getElementById('gallery-grid');
+            const empty = document.getElementById('gallery-empty');
+            const countEl = document.getElementById('gallery-count');
+            
+            grid.innerHTML = '';
+            
+            let filtered = snaps;
+            
+            if (favoritesFilter) filtered = filtered.filter(s => s.favorite);
+            if (searchTerm) {
+                filtered = filtered.filter(s => 
+                    (s.caption || '').toLowerCase().includes(searchTerm) || 
+                    (s.tags || []).some(t => t.toLowerCase().includes(searchTerm))
+                );
+            }
+
+            if (filtered.length === 0) {
+                grid.classList.add('hidden');
+                empty.classList.remove('hidden');
+                countEl.textContent = `${snaps.length} moments`;
+                return;
+            }
+            
+            grid.classList.remove('hidden');
+            empty.classList.add('hidden');
+            countEl.textContent = `${snaps.length} moments • ${Math.floor(snaps.length / 4)} albums`;
+
+            const sorted = [...filtered].sort((a, b) => b.timestamp - a.timestamp);
+            
+            sorted.forEach(snap => {
+                const div = document.createElement('div');
+                div.className = `snap-item cursor-pointer ring-1 ring-white/5 hover:ring-teal-500/30 active:scale-[0.985]`;
+                
+                let inner = '';
+                if (snap.type === 'video') {
+                    inner = `<video src="${snap.imageData}" class="w-full h-full object-cover" muted></video>`;
+                } else {
+                    inner = `<img src="${snap.imageData}" alt="Snap">`;
+                }
+                
+                div.innerHTML = `
+                    ${inner}
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
+                    ${snap.favorite ? `<div class="absolute top-1.5 right-1.5 text-red-400"><i class="fa-solid fa-heart text-xs"></i></div>` : ''}
+                    <div class="absolute bottom-1.5 left-1.5 right-1.5">
+                        <div class="text-[9px] leading-none text-white/90 font-medium line-clamp-2">${snap.caption || 'Untitled moment'}</div>
+                        ${snap.type === 'video' ? `<div class="text-[8px] text-emerald-400 mt-0.5 flex items-center gap-1"><i class="fa-solid fa-video"></i> VIDEO</div>` : ''}
+                    </div>
+                `;
+                
+                div.onclick = () => openDetail(snap.id);
+                div.oncontextmenu = (e) => { e.preventDefault(); toggleFavorite(snap.id); };
+                grid.appendChild(div);
+            });
+        }
+
+        function toggleFavorite(id) {
+            const snap = snaps.find(s => s.id === id);
+            if (!snap) return;
+            snap.favorite = !snap.favorite;
+            saveSnaps();
+            renderGallery(document.getElementById('gallery-search').value);
+            showToast(snap.favorite ? "Added to favorites" : "Removed from favorites");
+        }
+
+        // Camera
+        async function startCamera() {
+            const video = document.getElementById('camera-feed');
+            
+            try {
+                if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+
+                const constraints = {
+                    video: { 
+                        facingMode: { ideal: 'environment' },
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = currentStream;
+                video.setAttribute('playsinline', true);
+
+                // Shake to capture (fun Pixel 9 feature)
+                if (window.DeviceMotionEvent) {
+                    window.addEventListener('devicemotion', handleShake, { once: true });
+                }
+            } catch (err) {
+                video.style.background = 'linear-gradient(135deg, #1a1f24 0%, #111418 100%)';
+                const container = video.parentElement;
+                if (!container.querySelector('.fallback-overlay')) {
+                    const overlay = document.createElement('div');
+                    overlay.className = 'fallback-overlay absolute inset-0 flex flex-col items-center justify-center text-center px-6 z-30';
+                    overlay.innerHTML = `
+                        <i class="fa-solid fa-camera text-4xl mb-3 text-white/30"></i>
+                        <div class="text-sm font-medium">Camera ready</div>
+                        <div class="text-[11px] text-white/40 mt-1">Allow camera for live Pixel 9 preview.</div>
+                    `;
+                    container.appendChild(overlay);
+                }
+            }
+        }
+
+        let lastShake = 0;
+        function handleShake(event) {
+            const acc = event.accelerationIncludingGravity;
+            if (!acc) return;
+            const magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
+            if (magnitude > 25 && Date.now() - lastShake > 1200) {
+                lastShake = Date.now();
+                if (document.getElementById('section-camera').classList.contains('active')) {
+                    captureOrRecord();
+                    showToast("Shake capture!");
+                }
+            }
+            // Re-attach for continuous shakes
+            setTimeout(() => {
+                if (document.getElementById('section-camera').classList.contains('active')) {
+                    window.addEventListener('devicemotion', handleShake, { once: true });
+                }
+            }, 800);
+        }
+
+        function stopCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+                currentStream = null;
+            }
+            if (isRecording) stopRecording();
+        }
+
+        function setCaptureMode(mode) {
+            captureMode = mode;
+            document.querySelectorAll('[id^="mode-"]').forEach(el => el.classList.remove('active', 'bg-gradient-to-r', 'from-teal-500', 'to-indigo-500', 'text-white'));
+            
+            const activeEl = document.getElementById('mode-' + mode);
+            activeEl.classList.add('active', 'bg-gradient-to-r', 'from-teal-500', 'to-indigo-500', 'text-white');
+            
+            const info = document.getElementById('camera-info');
+            const label = document.getElementById('mode-label');
+            
+            if (mode === 'photo') {
+                info.textContent = '50MP • Tensor G4 • 4K';
+                label.textContent = 'PHOTO MODE';
+            } else if (mode === 'video') {
+                info.textContent = '4K60 • HDR Video';
+                label.textContent = 'VIDEO MODE';
+            } else if (mode === 'portrait') {
+                info.textContent = '50MP • Portrait AI';
+                label.textContent = 'PORTRAIT MODE';
+            }
+        }
+
+        function toggleFlash() {
+            flashOn = !flashOn;
+            const icon = document.getElementById('flash-icon');
+            icon.classList.toggle('fa-bolt', !flashOn);
+            icon.classList.toggle('fa-bolt-lightning', flashOn);
+            icon.style.color = flashOn ? '#facc15' : '';
+            
+            const video = document.getElementById('camera-feed');
+            video.style.filter = flashOn ? 'brightness(1.35) saturate(1.15)' : '';
+        }
+
+        function captureOrRecord() {
+            if (captureMode === 'video') {
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    startVideoRecording();
+                }
+            } else {
+                capturePhoto();
+            }
+        }
+
+        function capturePhoto() {
+            const video = document.getElementById('camera-feed');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+            
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.95);
+            
+            const snap = {
+                id: 'snap_' + Date.now(),
+                imageData: imageData,
+                caption: '',
+                tags: [],
+                timestamp: Date.now(),
+                type: 'photo',
+                favorite: false,
+                edits: []
+            };
+            
+            snaps.unshift(snap);
+            saveSnaps();
+            renderGallery();
+            
+            if (navigator.vibrate) navigator.vibrate([18, 40, 18]);
+            
+            showToast("Photo captured on Pixel 9");
+            
+            setTimeout(() => {
+                switchTab('gallery');
+                setTimeout(() => openDetail(snap.id), 300);
+            }, 650);
+        }
+
+        async function startVideoRecording() {
+            const video = document.getElementById('camera-feed');
+            if (!currentStream) return;
+
+            recordedChunks = [];
+            try {
+                mediaRecorder = new MediaRecorder(currentStream, { mimeType: 'video/webm;codecs=vp9' });
+                
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+                
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const videoUrl = URL.createObjectURL(blob);
+                    
+                    const snap = {
+                        id: 'snap_' + Date.now(),
+                        imageData: videoUrl,
+                        caption: '',
+                        tags: [],
+                        timestamp: Date.now(),
+                        type: 'video',
+                        favorite: false,
+                        duration: Math.floor((Date.now() - recordingStart) / 1000)
+                    };
+                    
+                    snaps.unshift(snap);
+                    saveSnaps();
+                    renderGallery();
+                    
+                    showToast("Video saved");
+                    switchTab('gallery');
+                    setTimeout(() => openDetail(snap.id), 300);
+                };
+                
+                mediaRecorder.start();
+                isRecording = true;
+                
+                const indicator = document.getElementById('recording-indicator');
+                indicator.classList.remove('hidden');
+                
+                const btn = document.getElementById('capture-button');
+                btn.style.borderColor = '#ef4444';
+                
+                recordingStart = Date.now();
+                recordInterval = setInterval(updateRecordTime, 1000);
+                
+            } catch (e) {
+                showToast("Video recording not supported in this browser");
+            }
+        }
+
+        let recordingStart = 0;
+        function updateRecordTime() {
+            const el = document.getElementById('record-time');
+            const seconds = Math.floor((Date.now() - recordingStart) / 1000);
+            el.textContent = `${Math.floor(seconds/60)}:${(seconds%60).toString().padStart(2,'0')}`;
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                clearInterval(recordInterval);
+                
+                document.getElementById('recording-indicator').classList.add('hidden');
+                document.getElementById('capture-button').style.borderColor = '#1f2429';
+            }
+        }
+
+        // Advanced AI (opposite of MVP - full Pixel AI suite)
+        function showAIAnalyzeMenu() {
+            document.getElementById('ai-menu-modal').classList.remove('hidden');
+            document.getElementById('ai-menu-modal').classList.add('flex');
+        }
+        
+        function hideAIAnalyzeMenu() {
+            document.getElementById('ai-menu-modal').classList.add('hidden');
+            document.getElementById('ai-menu-modal').classList.remove('flex');
+        }
+
+        function runAIAnalysis(type) {
+            hideAIAnalyzeMenu();
+            
+            const video = document.getElementById('camera-feed');
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const imageData = canvas.toDataURL('image/jpeg', 0.92);
+            
+            let caption = '';
+            let tags = ['pixel9', 'ai'];
+            
+            const hour = new Date().getHours();
+            const time = hour < 6 ? "night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+            
+            // "Pixel AI" simulation - the opposite of basic MVP captions
+            switch (type) {
+                case 'describe':
+                    caption = `A beautifully composed ${time} scene. The Tensor G4 captured exquisite detail in the shadows and highlights. This moment feels serene and intentional.`;
+                    tags = [time, 'composition', 'light', 'pixel9'];
+                    break;
+                case 'magic':
+                    caption = `Magic Editor applied: removed distracting elements, enhanced sky gradient, and perfectly balanced exposure. Looks like a professional shot.`;
+                    tags = ['magic-editor', 'edited', 'professional'];
+                    break;
+                case 'besttake':
+                    caption = `Best Take selected the sharpest frame with the best expression and lighting. AI analyzed 47 frames in under a second.`;
+                    tags = ['best-take', 'ai', 'perfect'];
+                    break;
+                case 'addme':
+                    caption = `Added you into this moment using advanced subject isolation. The lighting and shadows match perfectly thanks to Pixel's computational photography.`;
+                    tags = ['add-me', 'group', 'ai-generated'];
+                    break;
+                case 'erase':
+                    caption = `Audio Magic Eraser removed wind noise and background chatter. The voice in this clip is now crystal clear.`;
+                    tags = ['audio-erase', 'clean', 'video'];
+                    break;
+                case 'story':
+                    caption = `Story generated: "In the golden light of ${time}, a quiet moment unfolded on the Pixel 9. The details in the foreground tell a story of presence and appreciation."`;
+                    tags = ['story', 'narrative', 'memory'];
+                    break;
+            }
+            
+            const snap = {
+                id: 'snap_' + Date.now(),
+                imageData: imageData,
+                caption: caption,
+                tags: tags,
+                timestamp: Date.now(),
+                type: captureMode === 'video' ? 'video' : 'photo',
+                favorite: false,
+                aiEnhanced: type
+            };
+            
+            snaps.unshift(snap);
+            saveSnaps();
+            renderGallery();
+            
+            showToast(`Pixel AI • ${type.charAt(0).toUpperCase() + type.slice(1)} complete`);
+            
+            setTimeout(() => {
+                switchTab('gallery');
+                setTimeout(() => openDetail(snap.id), 280);
+            }, 420);
+        }
+
+        // Memories (AI generated)
+        function generateAIMemory(kind) {
+            if (snaps.length < 2) {
+                showToast("Need at least a couple snaps for AI memories");
+                return;
+            }
+            
+            let title = '';
+            let body = '';
+            
+            if (kind === 'week') {
+                title = "This Week on My Pixel 9";
+                body = `A collection of ${snaps.length} moments. The light was incredible this week. AI noticed a recurring theme of quiet appreciation and golden tones.`;
+            } else if (kind === 'story') {
+                title = "A Short Story from Your Snaps";
+                body = `In the ${new Date().getHours() < 12 ? 'morning' : 'evening'} light, you captured the texture of everyday life. These frames feel connected — a story of presence.`;
+            } else {
+                title = "Best of Your Pixel 9";
+                body = `Ranked by composition, emotion, and technical quality. Your Pixel 9 has been telling a beautiful story. These are the frames that stand out.`;
+            }
+            
+            showToast("AI Memory created");
+            
+            // Open a rich memory view
+            const memorySnap = {
+                id: 'memory_' + Date.now(),
+                imageData: snaps[0].imageData,
+                caption: body,
+                tags: ['ai-memory', kind],
+                timestamp: Date.now(),
+                type: 'memory',
+                title: title
+            };
+            
+            snaps.unshift(memorySnap);
+            saveSnaps();
+            renderGallery();
+            
+            setTimeout(() => openDetail(memorySnap.id), 300);
+        }
+
+        function createMemoryBook() {
+            if (snaps.length === 0) {
+                showToast("Add some snaps first");
+                return;
+            }
+            
+            const bookContent = snaps.slice(0, 8).map((s, i) => 
+                `${i+1}. ${s.caption || 'Untitled'}\n${new Date(s.timestamp).toLocaleDateString()} — ${s.tags?.join(', ') || ''}`
+            ).join('\n\n');
+            
+            const blob = new Blob([`PIXELSNAP MEMORY BOOK\n\n${bookContent}\n\nGenerated on your Pixel 9 • ${new Date().toLocaleDateString()}`], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'pixelsnap-memory-book.txt';
+            a.click();
+            
+            showToast("Memory book exported (upgrade for beautiful PDF)");
+        }
+
+        // Studio / Advanced Editor (the opposite of basic detail view)
+        let editorSnap = null;
+
+        function openDetail(id) {
+            const snap = snaps.find(s => s.id === id);
+            if (!snap) return;
+            
+            currentSnapId = id;
+            
+            if (snap.type === 'memory') {
+                alert(`${snap.title}\n\n${snap.caption}`);
+                return;
+            }
+            
+            // Open Studio for editing (full featured)
+            switchTab('studio');
+            editorSnap = snap;
+            
+            const info = document.getElementById('studio-snap-info');
+            info.innerHTML = `${snap.caption ? snap.caption.substring(0,60) + '...' : 'Untitled'} • ${new Date(snap.timestamp).toLocaleDateString()}`;
+            
+            setupCanvasEditor(snap);
+        }
+
+        function setupCanvasEditor(snap) {
+            const canvas = document.getElementById('editor-canvas');
+            const ctx = canvas.getContext('2d');
+            canvasCtx = ctx;
+            
+            const img = new Image();
+            img.onload = () => {
+                // Fit to canvas
+                const scale = Math.min(800 / img.width, 800 / img.height);
+                const w = img.width * scale;
+                const h = img.height * scale;
+                
+                canvas.width = w;
+                canvas.height = h;
+                
+                ctx.drawImage(img, 0, 0, w, h);
+                currentCanvasImage = img;
+            };
+            img.src = snap.imageData;
+        }
+
+        function applyFilter(filter) {
+            if (!canvasCtx || !currentCanvasImage) return;
+            
+            const canvas = document.getElementById('editor-canvas');
+            const ctx = canvasCtx;
+            
+            ctx.filter = 'none';
+            
+            if (filter === 'vibrant') ctx.filter = 'saturate(1.8) contrast(1.15)';
+            else if (filter === 'warm') ctx.filter = 'sepia(0.4) saturate(1.3)';
+            else if (filter === 'dramatic') ctx.filter = 'contrast(1.4) brightness(0.9)';
+            else if (filter === 'noir') ctx.filter = 'grayscale(1) contrast(1.3)';
+            else if (filter === 'pastel') ctx.filter = 'saturate(0.6) brightness(1.1)';
+            else if (filter === 'cinema') ctx.filter = 'contrast(1.2) saturate(0.9) hue-rotate(-10deg)';
+            else if (filter === 'pixel') ctx.filter = 'contrast(1.6) saturate(1.8)';
+            
+            ctx.drawImage(currentCanvasImage, 0, 0, canvas.width, canvas.height);
+        }
+
+        function adjustBrightness(val) {
+            if (!canvasCtx || !currentCanvasImage) return;
+            const canvas = document.getElementById('editor-canvas');
+            document.getElementById('bright-val').textContent = val;
+            
+            canvasCtx.filter = `brightness(${1 + (val / 120)})`;
+            canvasCtx.drawImage(currentCanvasImage, 0, 0, canvas.width, canvas.height);
+        }
+
+        function applyMagicEnhance(mode) {
+            if (!canvasCtx || !currentCanvasImage) return;
+            const canvas = document.getElementById('editor-canvas');
+            const ctx = canvasCtx;
+            
+            ctx.filter = 'none';
+            
+            if (mode === 'auto') ctx.filter = 'contrast(1.15) saturate(1.25) brightness(1.05)';
+            else if (mode === 'portrait') ctx.filter = 'saturate(1.4) contrast(1.1) brightness(1.08)';
+            else if (mode === 'night') ctx.filter = 'brightness(1.2) contrast(1.25) saturate(0.9)';
+            else if (mode === 'erase') {
+                // Simple "magic erase" sim - boost midtones
+                ctx.filter = 'contrast(1.1) brightness(1.15)';
+                showToast("Magic Eraser applied (background cleaned)");
+            }
+            
+            ctx.drawImage(currentCanvasImage, 0, 0, canvas.width, canvas.height);
+            showToast(`Pixel AI • ${mode} enhance`);
+        }
+
+        function addTextToCanvas() {
+            if (!canvasCtx) return;
+            const text = prompt("Enter text for your moment:", "Pixel 9 moment");
+            if (!text) return;
+            
+            const canvas = document.getElementById('editor-canvas');
+            const ctx = canvasCtx;
+            
+            ctx.font = 'bold 42px Inter, sans-serif';
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+            ctx.lineWidth = 6;
+            ctx.textAlign = 'center';
+            
+            const x = canvas.width / 2;
+            const y = canvas.height / 2;
+            
+            ctx.strokeText(text, x, y);
+            ctx.fillText(text, x, y);
+            
+            showToast("Text added. Drag to reposition in full app.");
+        }
+
+        function addStickerToCanvas() {
+            if (!canvasCtx) return;
+            const stickers = ['🌟', '❤️', '📍', '✨', '🌈', '🔥'];
+            const sticker = stickers[Math.floor(Math.random() * stickers.length)];
+            
+            const canvas = document.getElementById('editor-canvas');
+            const ctx = canvasCtx;
+            
+            ctx.font = '72px serif';
+            ctx.fillText(sticker, canvas.width * 0.3 + Math.random() * 200, canvas.height * 0.3 + Math.random() * 300);
+            
+            showToast("Sticker placed");
+        }
+
+        function cropCanvas() {
+            if (!canvasCtx || !currentCanvasImage) return;
+            const canvas = document.getElementById('editor-canvas');
+            // Simple center crop simulation
+            const ctx = canvasCtx;
+            const w = canvas.width * 0.7;
+            const h = canvas.height * 0.7;
+            const x = (canvas.width - w) / 2;
+            const y = (canvas.height - h) / 2;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(currentCanvasImage, x, y, w, h, 0, 0, canvas.width, canvas.height);
+            
+            showToast("Cropped to 4:3 (full app has freeform)");
+        }
+
+        function saveEditedSnap() {
+            if (!currentSnapId || !editorSnap) return;
+            
+            const canvas = document.getElementById('editor-canvas');
+            const editedData = canvas.toDataURL('image/jpeg', 0.94);
+            
+            const snapIndex = snaps.findIndex(s => s.id === currentSnapId);
+            if (snapIndex > -1) {
+                snaps[snapIndex].imageData = editedData;
+                snaps[snapIndex].caption = (snaps[snapIndex].caption || '') + ' [Studio edit]';
+                snaps[snapIndex].edits = (snaps[snapIndex].edits || []).concat(['studio-edit']);
+            }
+            
+            saveSnaps();
+            renderGallery();
+            showToast("Edit saved to gallery");
+            
+            // Go back to gallery
+            setTimeout(() => switchTab('gallery'), 800);
+        }
+
+        function closeStudio() {
+            switchTab('gallery');
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+            document.getElementById('section-' + tab).classList.add('active');
+            
+            // Nav highlight
+            document.querySelectorAll('[id^="nav-"]').forEach(el => el.classList.remove('text-white'));
+            const navEl = document.getElementById('nav-' + tab);
+            if (navEl) navEl.classList.add('text-white');
+            
+            if (tab === 'camera') {
+                setTimeout(startCamera, 80);
+            } else {
+                stopCamera();
+            }
+            
+            if (tab === 'gallery') {
+                renderGallery(document.getElementById('gallery-search') ? document.getElementById('gallery-search').value : '');
+            }
+            
+            if (tab === 'studio' && !currentSnapId) {
+                // If no snap selected, go to gallery
+                setTimeout(() => {
+                    if (document.getElementById('section-studio').classList.contains('active')) {
+                        switchTab('gallery');
+                    }
+                }, 1200);
+            }
+        }
+
+        function showSettings() {
+            const settingsHTML = `
+                <div class="fixed inset-0 bg-black/80 z-[999] flex items-end" onclick="this.remove()">
+                    <div onclick="event.stopImmediatePropagation()" class="w-full bg-[#000000] border-t border-white/10 rounded-t-3xl p-5 text-sm">
+                        <div class="font-semibold mb-4 text-lg">PixelSnap Settings</div>
+                        
+                        <div class="space-y-4">
+                            <div class="flex justify-between items-center">
+                                <div>Dynamic Theme (Material You)</div>
+                                <div class="text-emerald-400">ON • Matches wallpaper</div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>AI Intensity</div>
+                                <div>Maximum (Pixel 9 exclusive)</div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div>Auto backup to Google Photos</div>
+                                <div class="text-emerald-400">ON</div>
+                            </div>
+                            <div onclick="this.closest('.fixed').remove(); showToast('PWA updated — reinstall for latest icon')" class="cursor-pointer flex justify-between items-center border-t border-white/10 pt-4">
+                                <div>Update PWA</div>
+                                <i class="fa-solid fa-sync"></i>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 text-[10px] text-center text-white/40">This is the full-featured PixelSnap experience — the opposite of an MVP.</div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', settingsHTML);
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `px-5 py-2.5 rounded-3xl text-sm font-medium bg-[#000000] border border-white/10 shadow-xl flex items-center gap-2 max-w-[260px] mx-auto`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.transition = 'all 0.25s';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 180);
+            }, 2400);
+        }
+
+        function showInstallPrompt() {
+            const msg = "On your Pixel 9 Chrome: tap ⋮ → 'Add to Home screen'. This rich version will feel like a complete premium app.";
+            showToast(msg);
+            
+            // Real PWA prompt attempt
+            if ('serviceWorker' in navigator) {
+                // In real app we'd register SW here
+            }
+        }
+
+        // Seed rich demo content for the "full" experience
+        function seedDemoContent() {
+            if (snaps.length > 3) return;
+            
+            const demoImages = [
+                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Cdefs%3E%3ClinearGradient id='a' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23111'/%3E%3Cstop offset='100%25' stop-color='%23222'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='800' fill='url(%23a)'/%3E%3Ccircle cx='280' cy='280' r='140' fill='%23333'/%3E%3Crect x='100' y='480' width='600' height='180' fill='%23222' opacity='0.7'/%3E%3C/svg%3E",
+                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='800'%3E%3Crect width='800' height='800' fill='%23222'/%3E%3Cpath d='M100 700 L300 200 L500 550 L700 150' fill='none' stroke='%23444' stroke-width='60'/%3E%3C/svg%3E"
+            ];
+            
+            const now = Date.now();
+            
+            snaps = [
+                {
+                    id: 'demo_1',
+                    imageData: demoImages[0],
+                    caption: "Golden evening light on the kitchen counter. The Pixel 9 caught every reflection perfectly.",
+                    tags: ['evening', 'light', 'home', 'pixel9'],
+                    timestamp: now - 1000 * 60 * 60 * 3,
+                    type: 'photo',
+                    favorite: true,
+                    aiEnhanced: 'magic'
+                },
+                {
+                    id: 'demo_2',
+                    imageData: demoImages[1],
+                    caption: "Unexpected texture study after the rain. Best Take chose this frame for the perfect droplets.",
+                    tags: ['street', 'texture', 'rain', 'best-take'],
+                    timestamp: now - 1000 * 60 * 60 * 20,
+                    type: 'photo',
+                    favorite: false
+                },
+                {
+                    id: 'demo_video',
+                    imageData: "data:video/webm;base64,", // placeholder - real videos will be recorded
+                    caption: "Quick walk through the park. The stabilization on Pixel 9 is unreal.",
+                    tags: ['video', 'walk', 'nature'],
+                    timestamp: now - 1000 * 60 * 40,
+                    type: 'video',
+                    favorite: false,
+                    duration: 14
+                }
+            ];
+            saveSnaps();
+        }
+
+        function init() {
+            initTailwind();
+            loadSnaps();
+            seedDemoContent();
+            renderGallery();
+            
+            // Default to camera
+            const cameraSection = document.getElementById('section-camera');
+            if (cameraSection.classList.contains('active')) {
+                setTimeout(() => {
+                    startCamera();
+                    setCaptureMode('photo');
+                }, 480);
+            }
+            
+            // Keyboard shortcuts for desktop testing
+            document.addEventListener('keydown', (e) => {
+                if (e.key.toLowerCase() === 'c' && document.getElementById('section-camera').classList.contains('active')) {
+                    captureOrRecord();
+                }
+                if (e.key.toLowerCase() === 'g') switchTab('gallery');
+                if (e.key.toLowerCase() === 'm') switchTab('memories');
+            });
+            
+            // Auto show install hint once
+            setTimeout(() => {
+                const hasSeen = localStorage.getItem('pixelsnap_full_seen');
+                if (!hasSeen && snaps.length > 0) {
+                    localStorage.setItem('pixelsnap_full_seen', 'true');
+                    // subtle hint
+                }
+            }, 6500);
+            
+            // Welcome
+            console.log('%c[PixelSnap] Full-featured "opposite of MVP" experience loaded. Open preview.html on your Pixel 9 for the real camera + all AI tools.', 'color:#555');
+            
+            // Bonus: Show that this is the rich version
+            setTimeout(() => {
+                if (document.getElementById('section-camera').classList.contains('active')) {
+                    // nothing - already premium
+                }
+            }, 2000);
+        }
+        
+        window.onload = init;
+        
+        // Expose for debugging
+        window.PixelSnapFull = { switchTab, capturePhoto, runAIAnalysis, generateAIMemory };
+    </script>
+</body>
+</html>

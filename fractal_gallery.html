@@ -1,0 +1,1922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="description" content="PixelSnap Fractal Web Gallery - An interactive, hardware-accelerated physics-based photo gallery mockup built for Google Pixel 9.">
+    <title>PixelSnap • Fractal Web View</title>
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        :root {
+            --accent-color: #6366f1; /* Dynamic */
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --accent-shadow: rgba(99, 102, 241, 0.2);
+            --bg-color: #000000;
+            --card-bg: rgba(18, 18, 18, 0.75);
+            --text-color: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --pixel-blue: #4285f4;
+            --safe-top: env(safe-area-inset-top, 0px);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Ambient Background Matrix Canvas */
+        #bg-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+
+        /* Main Web Workspace Container */
+        #workspace {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            overflow: hidden;
+            cursor: grab;
+            touch-action: none; /* Crucial for custom touch handlers */
+        }
+
+        #workspace:active {
+            cursor: grabbing;
+        }
+
+        /* SVG Line Connections Layer */
+        #web-connections {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        #web-connections line {
+            stroke: var(--accent-color);
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 4px var(--accent-glow));
+            transition: stroke 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* HTML Nodes Layer */
+        #nodes-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Pass events to children nodes */
+        }
+
+        /* Individual Node */
+        .node {
+            position: absolute;
+            width: 170px;
+            height: 170px;
+            border-radius: 50%;
+            cursor: pointer;
+            pointer-events: auto;
+            transform: translate3d(0, 0, 0);
+            will-change: transform;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            transition: border-color 0.4s, box-shadow 0.4s;
+        }
+
+        /* Glow ring behind node */
+        .node-glow {
+            position: absolute;
+            top: -12px;
+            left: -12px;
+            right: -12px;
+            bottom: -12px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            z-index: -1;
+        }
+
+        .node.active .node-glow {
+            opacity: 1;
+        }
+
+        /* Animated border ring */
+        .node-ring {
+            position: absolute;
+            top: -4px;
+            left: -4px;
+            right: -4px;
+            bottom: -4px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            transition: border-color 0.5s, transform 0.5s;
+            z-index: 1;
+        }
+
+        .node.active .node-ring {
+            border-color: var(--accent-color);
+            transform: scale(1.05);
+            box-shadow: 0 0 15px var(--accent-glow);
+            animation: pulse-ring 2.5s infinite alternate;
+        }
+
+        .node img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 50%;
+            pointer-events: none;
+            background: #111;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 8px var(--accent-shadow); }
+            100% { box-shadow: 0 0 20px var(--accent-glow); }
+        }
+
+        /* UI Shell - Pixel 9 Mock Top Status Bar */
+        .status-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: calc(44px + var(--safe-top));
+            padding: var(--safe-top) 24px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.85);
+            z-index: 10;
+            pointer-events: none;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.4), transparent);
+        }
+
+        .status-icons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* Floating UI Elements */
+        .header-title {
+            position: absolute;
+            top: calc(48px + var(--safe-top));
+            left: 20px;
+            z-index: 5;
+            pointer-events: auto;
+        }
+
+        .header-title h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(to right, #ffffff, var(--accent-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .header-title p {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        /* Bottom Floating Layout Selector */
+        .layout-bar {
+            position: absolute;
+            bottom: calc(24px + var(--safe-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            background: rgba(15, 15, 15, 0.7);
+            border: 1px solid var(--border-color);
+            padding: 6px;
+            border-radius: 30px;
+            display: flex;
+            gap: 4px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05);
+        }
+
+        .layout-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .layout-btn.active {
+            background: var(--accent-color);
+            color: white;
+            box-shadow: 0 4px 10px var(--accent-shadow);
+        }
+
+        /* Performance HUD Panel */
+        .perf-hud {
+            position: absolute;
+            top: calc(48px + var(--safe-top));
+            right: 80px;
+            z-index: 100;
+            background: rgba(18, 18, 18, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            height: 48px;
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-color);
+            pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .hud-indicator {
+            width: 6px;
+            height: 6px;
+            background-color: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-glow 2s infinite alternate;
+        }
+
+        .hud-divider {
+            color: rgba(255, 255, 255, 0.2);
+            margin: 0 4px;
+        }
+
+        .hud-metrics {
+            display: flex;
+            align-items: center;
+            font-family: monospace;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes pulse-glow {
+            0% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        /* Floating action buttons */
+        .fab-container {
+            position: absolute;
+            right: 20px;
+            top: calc(48px + var(--safe-top));
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 5;
+        }
+
+        .fab {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(18, 18, 18, 0.8);
+            border: 1px solid var(--border-color);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fab:hover, .fab:active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            box-shadow: 0 0 15px var(--accent-glow);
+            transform: scale(1.05);
+        }
+
+        /* Dynamic Glass Details Panel (Slide Drawer) */
+        .detail-panel {
+            position: absolute;
+            top: 0;
+            right: -380px; /* Hidden by default */
+            width: 360px;
+            height: 100%;
+            background: var(--card-bg);
+            border-left: 1px solid var(--border-color);
+            z-index: 8;
+            padding: calc(64px + var(--safe-top)) 24px calc(24px + var(--safe-bottom));
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            box-shadow: -10px 0 40px rgba(0,0,0,0.7);
+            transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .detail-panel.open {
+            right: 0;
+        }
+
+        .panel-close {
+            position: absolute;
+            top: calc(16px + var(--safe-top));
+            left: 20px;
+            font-size: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .panel-close:hover {
+            color: white;
+        }
+
+        .panel-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            margin-top: 10px;
+        }
+
+        .panel-image-container {
+            width: 100%;
+            aspect-ratio: 16/10;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            background: #111;
+        }
+
+        .panel-image-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .panel-desc-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.03);
+            font-size: 13.5px;
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .ai-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-color);
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .tag {
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--accent-glow);
+            color: var(--text-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 4px 10px;
+            border-radius: 20px;
+            transition: all 0.3s;
+        }
+
+        .panel-meta {
+            margin-top: auto;
+            border-top: 1px solid var(--border-color);
+            padding-top: 16px;
+            font-size: 12px;
+            color: var(--text-muted);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .meta-item i {
+            margin-right: 6px;
+            color: var(--accent-color);
+        }
+
+        .panel-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px var(--accent-shadow);
+        }
+
+        .btn-primary:hover, .btn-primary:active {
+            filter: brightness(1.1);
+            box-shadow: 0 4px 18px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Dynamic Popup Lightbox */
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0,0,0,0.95);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+
+        .lightbox.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: calc(24px + var(--safe-top));
+            right: 24px;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s;
+        }
+
+        .lightbox-close:hover {
+            background: red;
+            transform: scale(1.05);
+        }
+
+        .lightbox-img-wrapper {
+            max-width: 90%;
+            max-height: 80%;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px var(--accent-shadow);
+            border: 1.5px dashed var(--accent-color);
+            overflow: hidden;
+            transform: scale(0.9);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .lightbox.open .lightbox-img-wrapper {
+            transform: scale(1);
+        }
+
+        .lightbox-img-wrapper img {
+            display: block;
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            transition: filter 0.5s ease;
+        }
+
+        .lightbox-enhanced img {
+            filter: contrast(1.15) saturate(1.2) brightness(1.02) sepia(0.05);
+        }
+
+        .lightbox-hud {
+            position: absolute;
+            bottom: calc(30px + var(--safe-bottom));
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 16px;
+        }
+
+        .hud-btn {
+            background: rgba(18, 18, 18, 0.85);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .hud-btn.active {
+            background: var(--accent-color);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        /* Drag & Drop File Loader Zone Overlay */
+        #drop-zone {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 200;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            border: 4px dashed var(--accent-color);
+            margin: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #drop-zone.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .drop-icon {
+            font-size: 64px;
+            color: var(--accent-color);
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(20, 20, 20, 0.9);
+            border: 1px solid var(--accent-color);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            z-index: 500;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5), 0 0 10px var(--accent-shadow);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Mobile Adjustments for Pixel 9 Aspect Ratio */
+        @media (max-width: 480px) {
+            .detail-panel {
+                width: 100%;
+                right: -100%;
+            }
+            .header-title h1 {
+                font-size: 20px;
+            }
+            .fab-container {
+                right: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Ambient Grid & Particle Canvas -->
+    <canvas id="bg-canvas"></canvas>
+
+    <!-- Pixel 9 Status Bar Mockup (Tap to toggle Developer Performance HUD) -->
+    <div class="status-bar" onclick="togglePerfHud()" style="pointer-events: auto; cursor: pointer;" title="Toggle Developer Performance HUD">
+        <div id="status-time">20:04</div>
+        <div class="status-icons">
+            <i class="fa-solid fa-wifi"></i>
+            <i class="fa-solid fa-signal"></i>
+            <i class="fa-solid fa-battery-three-quarters"></i>
+        </div>
+    </div>
+
+    <!-- Pixel 9 Tensor G4 / OLED Performance HUD -->
+    <div class="perf-hud" id="perf-hud" style="display: none;">
+        <div class="hud-indicator"></div>
+        <div class="hud-metrics">
+            <span id="hud-fps">-- FPS</span>
+            <span class="hud-divider">|</span>
+            <span id="hud-latency">-- ms</span>
+            <span class="hud-divider">|</span>
+            <span id="hud-nodes">-- Nodes</span>
+        </div>
+    </div>
+
+    <!-- Title and details -->
+    <div class="header-title" style="display: flex; align-items: center; gap: 12px; pointer-events: auto;">
+        <a href="index.html" class="fab" style="width: 38px; height: 38px; display: flex; justify-content: center; align-items: center; margin: 0; text-decoration: none;" title="Back to Main App">
+            <i class="fa-solid fa-arrow-left" style="font-size: 14px;"></i>
+        </a>
+        <div>
+            <h1>PixelSnap</h1>
+            <p>Dynamic Fractal Web Gallery</p>
+        </div>
+    </div>
+
+    <!-- Floating Action Tools -->
+    <div class="fab-container">
+        <!-- Add Photos Button -->
+        <div class="fab" onclick="triggerFileInput()" title="Add Images">
+            <i class="fa-solid fa-plus"></i>
+        </div>
+        <!-- Reset Pan/Zoom Button -->
+        <div class="fab" onclick="resetView()" title="Reset View">
+            <i class="fa-solid fa-arrows-to-dot"></i>
+        </div>
+    </div>
+
+    <!-- Hidden File Input -->
+    <input type="file" id="image-upload" multiple accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+
+    <!-- Interactive Interactive Workspace -->
+    <div id="workspace">
+        <!-- Connection Lines Canvas (SVG) -->
+        <svg id="web-connections"></svg>
+        
+        <!-- absolute positioned node items -->
+        <div id="nodes-container"></div>
+    </div>
+
+    <!-- Layout Selector Controls -->
+    <div class="layout-bar">
+        <button class="layout-btn active" id="btn-layout-tree" onclick="setLayout('tree')">
+            <i class="fa-solid fa-network-wired"></i> Fractal Tree
+        </button>
+        <button class="layout-btn" id="btn-layout-spiral" onclick="setLayout('spiral')">
+            <i class="fa-solid fa-circle-nodes"></i> Sunflower Spiral
+        </button>
+        <button class="layout-btn" id="btn-layout-concentric" onclick="setLayout('concentric')">
+            <i class="fa-solid fa-circle-notch"></i> Concentric Rings
+        </button>
+    </div>
+
+    <!-- Detail side panel -->
+    <div class="detail-panel" id="detail-panel">
+        <div class="panel-close" onclick="closeInfoPanel()"><i class="fa-solid fa-chevron-right"></i></div>
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-right: 4px;">
+            <h2 class="panel-title" id="panel-title" style="margin-bottom: 0; outline: none; border-radius: 4px; padding: 2px 4px; transition: background-color 0.2s;">Moment Title</h2>
+            <i class="fa-solid fa-pen-to-square" onclick="toggleEditMode()" id="edit-icon" style="cursor: pointer; color: var(--text-muted); font-size: 14px; padding: 6px; transition: color 0.2s;" title="Edit Title & Description"></i>
+        </div>
+        
+        <div class="panel-image-container">
+            <img src="" id="panel-image" alt="Selected Shot">
+        </div>
+        
+        <div class="panel-desc-box">
+            <div class="ai-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <span><i class="fa-solid fa-wand-magic-sparkles"></i> Tensor G4 AI Analysis</span>
+                <span id="save-status" style="font-size: 9px; color: #10b981; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; display: none;">Saved</span>
+            </div>
+            <p id="panel-desc" style="outline: none; border-radius: 4px; padding: 4px; transition: background-color 0.2s; line-height: 1.55;">Analyzing composition and details using Google Computational Photography...</p>
+        </div>
+        
+        <div class="tag-container" id="panel-tags">
+            <div class="tag">#Snap</div>
+        </div>
+
+        <div class="panel-meta">
+            <div class="meta-item"><i class="fa-regular fa-calendar-days"></i> <span id="meta-date">June 25, 2026</span></div>
+            <div class="meta-item"><i class="fa-regular fa-image"></i> <span id="meta-resolution">12 MP</span></div>
+            <div class="meta-item"><i class="fa-solid fa-mobile-screen-button"></i> <span id="meta-device">Pixel 9</span></div>
+            <div class="meta-item"><i class="fa-solid fa-database"></i> <span id="meta-size">3.4 MB</span></div>
+        </div>
+
+        <div class="panel-actions">
+            <button class="btn btn-primary" onclick="triggerMagicEdit()"><i class="fa-solid fa-sparkles"></i> AI Enhance</button>
+            <button class="btn btn-secondary" onclick="openNativeDetail()" id="btn-native-detail" style="display: none;"><i class="fa-solid fa-expand"></i> Details</button>
+            <button class="btn btn-secondary" onclick="shareMoment()"><i class="fa-solid fa-share-nodes"></i> Share</button>
+        </div>
+    </div>
+
+    <!-- Cinematic Fullscreen Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <div class="lightbox-close" onclick="closeLightbox()"><i class="fa-solid fa-xmark"></i></div>
+        <div class="lightbox-img-wrapper" id="lightbox-img-wrapper">
+            <img src="" id="lightbox-image" alt="Cinematic Display">
+        </div>
+        <div class="lightbox-hud">
+            <button class="hud-btn" id="btn-magic-filter" onclick="toggleMagicFilter()">
+                <i class="fa-solid fa-circle-half-stroke"></i> Ultra Contrast
+            </button>
+            <button class="hud-btn" onclick="shareMoment()">
+                <i class="fa-solid fa-share"></i> Share to Text
+            </button>
+        </div>
+    </div>
+
+    <!-- Drag & Drop Uploader Screen -->
+    <div id="drop-zone">
+        <div class="drop-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+        <h2 style="font-family: 'Outfit'; font-size: 24px; margin-bottom: 8px;">Release to Add to Web</h2>
+        <p style="color: var(--text-muted); font-size: 14px;">Import images directly into your PixelSnap Gallery</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">Moment added successfully!</div>
+
+    <!-- Core App Logic -->
+    <script>
+        // Set dynamic time in Status Bar
+        function updateStatusBarTime() {
+            const timeEl = document.getElementById('status-time');
+            if (timeEl) {
+                const now = new Date();
+                let hours = now.getHours();
+                let minutes = now.getMinutes();
+                hours = hours < 10 ? '0' + hours : hours;
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                timeEl.textContent = `${hours}:${minutes}`;
+            }
+        }
+        setInterval(updateStatusBarTime, 1000);
+        updateStatusBarTime();
+
+        // 1. Initial State & Unsplash Gallery
+        let images = [
+            {
+                src: "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=800&q=80",
+                title: "Lagoon Nebula",
+                tags: ["Cosmos", "Astrophotography", "Pixel 9 Pro"],
+                desc: "An ultra-detailed wide-field capture of the Lagoon Nebula in Sagittarius. Computational stacks resolve high dynamic range across hydrogen clouds."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?auto=format&fit=crop&w=800&q=80",
+                title: "Misty Valleys",
+                tags: ["Nature", "Morning", "Landscape"],
+                desc: "Alpine slopes enveloped in dense morning fog. HDR exposure balances shadow preservation under bright canopy diffusions."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=800&q=80",
+                title: "Turquoise Waves",
+                tags: ["Ocean", "Travel", "Summer"],
+                desc: "Stunning overhead view of coral reefs. Tensor G4 real-time white-balancing optimizes warm sands against deep teal depth gradients."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&w=800&q=80",
+                title: "Cyber Circuits",
+                tags: ["Tech", "Macro", "Cyberpunk"],
+                desc: "Extreme close-up of a microcircuit board. Smart-Focus camera tracking retains extreme sharpness at 10x macro scale."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=800&q=80",
+                title: "Quantum Grid",
+                tags: ["Abstract", "Vibrant", "Math"],
+                desc: "Saturated vector light lines intersecting in a grid layout. High-contrast OLED profiles pop with sharp neon lines."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1483347756197-71ef80e95f73?auto=format&fit=crop&w=800&q=80",
+                title: "Borealis Sky",
+                tags: ["Aurora", "NightSight", "Norway"],
+                desc: "Vibrant aurora borealis dancing over snowy peaks. Capture utilizes Google NightSight computational exposure."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&w=800&q=80",
+                title: "Veins of Life",
+                tags: ["Macro", "Emerald", "Plant"],
+                desc: "Backlit monstera leaf displaying leaf vasculature. Dynamic HDR balances highlight blowouts through translucency."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+                title: "Planet Core",
+                tags: ["Cosmic", "Globe", "Digital"],
+                desc: "A glowing futuristic render representing planetary data cores. Optimized with deep blacks and vibrant core luminescence."
+            },
+            {
+                src: "https://images.unsplash.com/photo-1516339901601-2e1b62dc0c45?auto=format&fit=crop&w=800&q=80",
+                title: "Aura Spark",
+                tags: ["Abstract", "Neon", "Energy"],
+                desc: "Plasma sparks expanding into a dark void. Excellent validation of OLED panel response speeds and deep black rendering."
+            }
+        ];
+
+        let nodes = [];
+        let links = [];
+        let focusId = 0;
+        let currentLayout = 'tree'; // 'tree' or 'spiral'
+
+        // Workspace Zoom & Pan Variables
+        let zoom = 1.0;
+        let targetZoom = 1.0;
+        let offsetX = window.innerWidth / 2;
+        let offsetY = window.innerHeight / 2;
+        let targetOffsetX = window.innerWidth / 2;
+        let targetOffsetY = window.innerHeight / 2;
+
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let prevOffsetX = 0;
+        let prevOffsetY = 0;
+
+        // Bouncy Spring physics coefficients
+        const spring = 0.07;
+        const friction = 0.76;
+
+        // Mobile touch variables
+        let touchStartDist = 0;
+        let startZoom = 1.0;
+
+        // 2. Build the graph layout
+        function buildGraph(imgList) {
+            const oldNodes = [...nodes];
+            nodes = [];
+            links = [];
+
+            // Generate node entities
+            imgList.forEach((img, idx) => {
+                const existing = oldNodes.find(n => n.src === img.src);
+                if (existing) {
+                    // Retain coordinates and physics state
+                    nodes.push({
+                        ...existing,
+                        id: idx,
+                        snapId: img.id || existing.snapId,
+                        title: img.title || existing.title,
+                        tags: img.tags || existing.tags,
+                        desc: img.desc || existing.desc
+                    });
+                } else {
+                    nodes.push({
+                        id: idx,
+                        snapId: img.id || null,
+                        src: img.src,
+                        title: img.title || `Moment #${idx + 1}`,
+                        tags: img.tags || ["Snap"],
+                        desc: img.desc || "A captured moment in your PixelSnap gallery.",
+                        x: (Math.random() - 0.5) * window.innerWidth * 0.4,
+                        y: (Math.random() - 0.5) * window.innerHeight * 0.4,
+                        vx: 0,
+                        vy: 0,
+                        targetX: 0,
+                        targetY: 0,
+                        radius: 50,
+                        scale: 1.0,
+                        color: "rgb(99, 102, 241)",
+                        depth: 0
+                    });
+                }
+            });
+
+            // Connect in ternary tree
+            for (let i = 1; i < nodes.length; i++) {
+                const parentId = Math.floor((i - 1) / 3);
+                links.push({
+                    source: parentId,
+                    target: i
+                });
+            }
+        }
+
+        // Layout Coordinate Generators
+        function calculateTreeLayout(focusNodeId, nodeList, linkList) {
+            // Adjacency Matrix
+            const adj = {};
+            nodeList.forEach(n => adj[n.id] = []);
+            linkList.forEach(l => {
+                adj[l.source].push(l.target);
+                adj[l.target].push(l.source);
+            });
+
+            // BFS from focusNodeId
+            const visited = new Set([focusNodeId]);
+            const queue = [{ id: focusNodeId, parent: null, depth: 0, angle: 0 }];
+            const nodeMeta = {};
+
+            while (queue.length > 0) {
+                const curr = queue.shift();
+                nodeMeta[curr.id] = curr;
+
+                const children = adj[curr.id].filter(nb => !visited.has(nb));
+                children.forEach((childId, idx) => {
+                    visited.add(childId);
+                    let angle = 0;
+                    if (curr.depth === 0) {
+                        angle = (idx / children.length) * Math.PI * 2;
+                    } else {
+                        const parentAngle = curr.angle;
+                        const arc = Math.PI * 0.8;
+                        const start = parentAngle - arc / 2;
+                        angle = children.length === 1 ? parentAngle : start + (idx / (children.length - 1)) * arc;
+                    }
+                    queue.push({
+                        id: childId,
+                        parent: curr.id,
+                        depth: curr.depth + 1,
+                        angle: angle
+                    });
+                });
+            }
+
+            // Assign placement coordinates
+            nodeList.forEach(node => {
+                const meta = nodeMeta[node.id];
+                if (!meta) {
+                    node.targetX = 1500;
+                    node.targetY = 1500;
+                    node.radius = 10;
+                    return;
+                }
+
+                node.depth = meta.depth;
+
+                if (meta.depth === 0) {
+                    node.targetX = 0;
+                    node.targetY = 0;
+                    node.radius = 85;
+                } else {
+                    let distance = 0;
+                    if (meta.depth === 1) distance = 250;
+                    else if (meta.depth === 2) distance = 430;
+                    else distance = 430 + (meta.depth - 2) * 150;
+
+                    node.targetX = Math.cos(meta.angle) * distance;
+                    node.targetY = Math.sin(meta.angle) * distance;
+                    node.radius = Math.max(32, 85 * Math.pow(0.68, meta.depth));
+                }
+            });
+        }
+
+        function calculateSpiralLayout(focusNodeId, nodeList) {
+            const orderedNodes = [nodeList.find(n => n.id === focusNodeId)];
+            nodeList.forEach(n => {
+                if (n.id !== focusNodeId) orderedNodes.push(n);
+            });
+
+            const goldenAngle = 137.5 * (Math.PI / 180);
+            const c = 72; // Spacing constant
+
+            orderedNodes.forEach((node, i) => {
+                if (i === 0) {
+                    node.targetX = 0;
+                    node.targetY = 0;
+                    node.radius = 85;
+                    node.depth = 0;
+                } else {
+                    const theta = i * goldenAngle;
+                    const r = c * Math.sqrt(i) + 85;
+                    node.targetX = Math.cos(theta) * r;
+                    node.targetY = Math.sin(theta) * r;
+                    node.radius = Math.max(34, 85 - Math.sqrt(i) * 9);
+                    node.depth = Math.ceil(i / 5);
+                }
+            });
+        }
+
+        function calculateConcentricLayout(focusNodeId, nodeList) {
+            const orderedNodes = [nodeList.find(n => n.id === focusNodeId)];
+            nodeList.forEach(n => {
+                if (n.id !== focusNodeId) orderedNodes.push(n);
+            });
+
+            orderedNodes.forEach((node, i) => {
+                if (i === 0) {
+                    node.targetX = 0;
+                    node.targetY = 0;
+                    node.radius = 85;
+                    node.depth = 0;
+                } else {
+                    let ring = 1;
+                    let ringIndex = i - 1;
+                    let ringCapacity = 4;
+                    let radiusStart = 220;
+                    let spacing = 180;
+
+                    if (i > 4) {
+                        ring = 2;
+                        ringIndex = i - 5;
+                        ringCapacity = 8;
+                    }
+                    if (i > 12) {
+                        ring = 3;
+                        ringIndex = i - 13;
+                        ringCapacity = 12;
+                    }
+                    if (i > 24) {
+                        ring = 4;
+                        ringIndex = i - 25;
+                        ringCapacity = 16;
+                    }
+
+                    const ringRadius = radiusStart + (ring - 1) * spacing;
+                    const theta = (ringIndex / ringCapacity) * Math.PI * 2 + (ring * 0.15);
+                    
+                    node.targetX = Math.cos(theta) * ringRadius;
+                    node.targetY = Math.sin(theta) * ringRadius;
+                    node.radius = Math.max(34, 85 - ring * 12);
+                    node.depth = ring;
+                }
+            });
+        }
+
+        function recalculateLayout() {
+            if (currentLayout === 'tree') {
+                calculateTreeLayout(focusId, nodes, links);
+            } else if (currentLayout === 'spiral') {
+                calculateSpiralLayout(focusId, nodes);
+            } else if (currentLayout === 'concentric') {
+                calculateConcentricLayout(focusId, nodes);
+            }
+        }
+
+        // 3. Dynamic DOM Generation
+        function rebuildDOM() {
+            const container = document.getElementById('nodes-container');
+            const svgEl = document.getElementById('web-connections');
+            
+            container.innerHTML = '';
+            svgEl.innerHTML = '';
+
+            // Generate SVGs
+            links.forEach((link, idx) => {
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('id', `line-${idx}`);
+                line.setAttribute('stroke', 'var(--accent-color)');
+                line.setAttribute('stroke-width', '1.5');
+                svgEl.appendChild(line);
+            });
+
+            // Generate Nodes
+            nodes.forEach(node => {
+                const div = document.createElement('div');
+                div.className = `node ${node.id === focusId ? 'active' : ''}`;
+                div.setAttribute('id', `node-${node.id}`);
+
+                const glow = document.createElement('div');
+                glow.className = 'node-glow';
+
+                const ring = document.createElement('div');
+                ring.className = 'node-ring';
+
+                const img = document.createElement('img');
+                img.src = node.src;
+                img.alt = node.title;
+                img.crossOrigin = "anonymous"; // Safe context sampling
+
+                // Sampling Color Extracting Hook
+                img.onload = () => {
+                    if (node.id === focusId) {
+                        extractThemeColor(img);
+                    }
+                };
+
+                div.appendChild(glow);
+                div.appendChild(ring);
+                div.appendChild(img);
+
+                // Click event (pops to center, expands, triggers sidebar)
+                div.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectNode(node.id);
+                });
+
+                // Double Click event (enters cinematic full screen)
+                div.addEventListener('dblclick', (e) => {
+                    e.stopPropagation();
+                    openLightbox(node);
+                });
+
+                container.appendChild(div);
+            });
+        }
+
+        // 4. Node Action Handler
+        function selectNode(id) {
+            if (id === focusId) {
+                // Toggle sidebar info open/close
+                const sidebar = document.getElementById('detail-panel');
+                sidebar.classList.toggle('open');
+                return;
+            }
+
+            // Play simulated haptic tick on selection
+            if (window.navigator.vibrate) {
+                window.navigator.vibrate(12); // Short crisp vibration
+            }
+
+            const prevFocus = focusId;
+            focusId = id;
+
+            // Adjust DOM focus class status
+            document.querySelectorAll('.node').forEach(el => el.classList.remove('active'));
+            const activeNode = document.getElementById(`node-${id}`);
+            if (activeNode) {
+                activeNode.classList.add('active');
+                
+                // Animate pop scale pulse effect
+                nodes[id].scale = 1.35; // Visual spike
+
+                const img = activeNode.querySelector('img');
+                if (img) extractThemeColor(img);
+            }
+
+            recalculateLayout();
+
+            // Slide camera view offsets to center the selected node in screen space
+            targetOffsetX = window.innerWidth / 2;
+            targetOffsetY = window.innerHeight / 2;
+
+            // Pan current camera coordinate targets to make node absolute (0,0) center
+            // By making node targets translate relative to (0,0), we bring active node to screen center.
+            // Center the focus node
+            const focusNode = nodes.find(n => n.id === focusId);
+            if (focusNode) {
+                // Trigger offsets reset to follow focus
+                targetOffsetX = window.innerWidth / 2 - focusNode.targetX * zoom;
+                targetOffsetY = window.innerHeight / 2 - focusNode.targetY * zoom;
+            }
+
+            // Sync slide Info panel content
+            const nodeDetails = nodes.find(n => n.id === focusId);
+            openInfoPanel(nodeDetails);
+        }
+
+        // 5. Dynamic Theme Extraction (Material You Mockup)
+        function extractThemeColor(imgEl) {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 1;
+                canvas.height = 1;
+                ctx.drawImage(imgEl, 0, 0, 1, 1);
+                
+                const data = ctx.getImageData(0, 0, 1, 1).data;
+                const r = data[0];
+                const g = data[1];
+                const b = data[2];
+
+                // Formulate target styles
+                const rgbColor = `rgb(${r}, ${g}, ${b})`;
+                const rgbaGlow = `rgba(${r}, ${g}, ${b}, 0.45)`;
+                const rgbaShadow = `rgba(${r}, ${g}, ${b}, 0.25)`;
+
+                // Inject theme configurations into CSS
+                document.documentElement.style.setProperty('--accent-color', rgbColor);
+                document.documentElement.style.setProperty('--accent-glow', rgbaGlow);
+                document.documentElement.style.setProperty('--accent-shadow', rgbaShadow);
+            } catch (e) {
+                // Fallback to indigo if cross-origin fails on standard web domains
+                console.warn("Dynamic color extraction failed (CORS restriction fallback):", e);
+                document.documentElement.style.setProperty('--accent-color', '#6366f1');
+                document.documentElement.style.setProperty('--accent-glow', 'rgba(99, 102, 241, 0.45)');
+                document.documentElement.style.setProperty('--accent-shadow', 'rgba(99, 102, 241, 0.25)');
+            }
+        }
+
+        // 6. Physics Render Loop
+        let lastFrameTime = performance.now();
+        let frameTimes = [];
+        let frameCount = 0;
+        let lastFpsUpdate = performance.now();
+        let perfHudVisible = false;
+
+        function togglePerfHud() {
+            perfHudVisible = !perfHudVisible;
+            const hud = document.getElementById('perf-hud');
+            if (hud) {
+                hud.style.display = perfHudVisible ? 'flex' : 'none';
+                showToast(perfHudVisible ? "Developer Performance HUD enabled" : "Developer Performance HUD disabled");
+            }
+        }
+
+        function physicsTick() {
+            const now = performance.now();
+            const delta = now - lastFrameTime;
+            lastFrameTime = now;
+
+            // Spring animate offsets & zooms
+            offsetX += (targetOffsetX - offsetX) * 0.08;
+            offsetY += (targetOffsetY - offsetY) * 0.08;
+            zoom += (targetZoom - zoom) * 0.08;
+
+            const BASE_NODE_RADIUS = 85;
+
+            nodes.forEach(node => {
+                // Spring velocities
+                node.vx += (node.targetX - node.x) * spring;
+                node.vy += (node.targetY - node.y) * spring;
+                
+                node.vx *= friction;
+                node.vy *= friction;
+                
+                node.x += node.vx;
+                node.y += node.vy;
+
+                // Animate scale decay bounce back
+                const baseScale = node.id === focusId ? 1.25 : 1.0;
+                node.scale += (baseScale - node.scale) * 0.15;
+
+                // Sync UI transform coordinates
+                const el = document.getElementById(`node-${node.id}`);
+                if (el) {
+                    const drawX = node.x * zoom + offsetX;
+                    const drawY = node.y * zoom + offsetY;
+                    
+                    // Zero layout thrashing: Scale transform instead of altering width/height
+                    const scaleFactor = (node.radius * zoom * node.scale) / BASE_NODE_RADIUS;
+                    
+                    // Centered transforms (GPU compositor accelerated)
+                    el.style.transform = `translate3d(${drawX - BASE_NODE_RADIUS}px, ${drawY - BASE_NODE_RADIUS}px, 0) scale(${scaleFactor})`;
+                }
+            });
+
+            // Sync connection vectors (SVGs)
+            links.forEach((link, idx) => {
+                const line = document.getElementById(`line-${idx}`);
+                const src = nodes.find(n => n.id === link.source);
+                const tgt = nodes.find(n => n.id === link.target);
+
+                if (line && src && tgt) {
+                    const x1 = src.x * zoom + offsetX;
+                    const y1 = src.y * zoom + offsetY;
+                    const x2 = tgt.x * zoom + offsetX;
+                    const y2 = tgt.y * zoom + offsetY;
+
+                    line.setAttribute('x1', x1);
+                    line.setAttribute('y1', y1);
+                    line.setAttribute('x2', x2);
+                    line.setAttribute('y2', y2);
+
+                    // Dynamic fades based on relative node nesting depth
+                    if (currentLayout === 'tree') {
+                        const relativeDepth = Math.max(src.depth, tgt.depth);
+                        const opacity = Math.max(0.12, 1.0 * Math.pow(0.55, relativeDepth));
+                        line.setAttribute('stroke-opacity', opacity);
+                    } else if (currentLayout === 'concentric') {
+                        const opacity = Math.max(0.12, 0.7 - Math.max(src.depth, tgt.depth) * 0.18);
+                        line.setAttribute('stroke-opacity', opacity);
+                    } else {
+                        // Spiral gets linear fade
+                        const opacity = Math.max(0.15, 0.8 - (tgt.id * 0.05));
+                        line.setAttribute('stroke-opacity', opacity);
+                    }
+                }
+            });
+
+            // Update Developer Performance HUD
+            if (perfHudVisible) {
+                frameTimes.push(delta);
+                if (frameTimes.length > 30) {
+                    frameTimes.shift();
+                }
+                
+                frameCount++;
+                if (now - lastFpsUpdate >= 500) {
+                    const fps = Math.round((frameCount * 1000) / (now - lastFpsUpdate));
+                    frameCount = 0;
+                    lastFpsUpdate = now;
+
+                    const avgLatency = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+                    
+                    const fpsEl = document.getElementById('hud-fps');
+                    const latencyEl = document.getElementById('hud-latency');
+                    const indicatorEl = document.querySelector('.hud-indicator');
+                    const nodesEl = document.getElementById('hud-nodes');
+
+                    if (fpsEl) fpsEl.textContent = `${fps} FPS`;
+                    if (latencyEl) latencyEl.textContent = `${avgLatency.toFixed(1)}ms`;
+                    if (nodesEl) nodesEl.textContent = `${nodes.length} Nodes`;
+
+                    if (indicatorEl) {
+                        if (avgLatency <= 8.3) {
+                            indicatorEl.style.backgroundColor = '#10b981';
+                            indicatorEl.style.boxShadow = '0 0 8px #10b981';
+                        } else if (avgLatency <= 16.7) {
+                            indicatorEl.style.backgroundColor = '#f59e0b';
+                            indicatorEl.style.boxShadow = '0 0 8px #f59e0b';
+                        } else {
+                            indicatorEl.style.backgroundColor = '#ef4444';
+                            indicatorEl.style.boxShadow = '0 0 8px #ef4444';
+                        }
+                    }
+                }
+            }
+
+            requestAnimationFrame(physicsTick);
+        }
+
+        // 7. Pan & Zoom Event Controllers
+        const workspace = document.getElementById('workspace');
+
+        // Mouse Drag / Pointer gestures
+        workspace.addEventListener('pointerdown', (e) => {
+            isDragging = true;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            prevOffsetX = offsetX;
+            prevOffsetY = offsetY;
+            workspace.setPointerCapture(e.pointerId);
+        });
+
+        workspace.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            const dx = e.clientX - dragStartX;
+            const dy = e.clientY - dragStartY;
+            
+            // Push physics camera targets
+            targetOffsetX = prevOffsetX + dx;
+            targetOffsetY = prevOffsetY + dy;
+        });
+
+        workspace.addEventListener('pointerup', (e) => {
+            isDragging = false;
+            workspace.releasePointerCapture(e.pointerId);
+        });
+
+        // Mouse Wheel Zoom
+        workspace.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = 0.08;
+            let nextZoom = targetZoom + (e.deltaY < 0 ? zoomFactor : -zoomFactor);
+            nextZoom = Math.max(0.18, Math.min(2.8, nextZoom));
+            
+            // Adjust camera focus anchor dynamically on scroll
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            
+            targetOffsetX = mouseX - (mouseX - targetOffsetX) * (nextZoom / targetZoom);
+            targetOffsetY = mouseY - (mouseY - targetOffsetY) * (nextZoom / targetZoom);
+            targetZoom = nextZoom;
+        }, { passive: false });
+
+        // Touch Gestures (Pinch to Zoom & Pan)
+        workspace.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                touchStartDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                startZoom = targetZoom;
+            }
+        });
+
+        workspace.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                
+                // Adjust scale target
+                let nextZoom = startZoom * (dist / touchStartDist);
+                targetZoom = Math.max(0.18, Math.min(2.8, nextZoom));
+            }
+        }, { passive: false });
+
+        // 8. Custom Layout Controller
+        function setLayout(layoutName) {
+            currentLayout = layoutName;
+            
+            // Active Layout Tab State
+            document.getElementById('btn-layout-tree').classList.toggle('active', layoutName === 'tree');
+            document.getElementById('btn-layout-spiral').classList.toggle('active', layoutName === 'spiral');
+            document.getElementById('btn-layout-concentric').classList.toggle('active', layoutName === 'concentric');
+            
+            recalculateLayout();
+            
+            // Reset bounce-scale pulse on all nodes to animate them smoothly to new targets
+            nodes.forEach(node => {
+                node.vx = 0;
+                node.vy = 0;
+            });
+
+            // Smoothly pan back focus coordinates
+            resetView();
+            showToast(`Switched to ${layoutName === 'tree' ? 'Fractal Tree' : layoutName === 'spiral' ? 'Sunflower Spiral' : 'Concentric Rings'} Layout`);
+        }
+
+        function resetView() {
+            targetZoom = 1.0;
+            const centerNode = nodes.find(n => n.id === focusId);
+            if (centerNode) {
+                targetOffsetX = window.innerWidth / 2 - centerNode.targetX;
+                targetOffsetY = window.innerHeight / 2 - centerNode.targetY;
+            } else {
+                targetOffsetX = window.innerWidth / 2;
+                targetOffsetY = window.innerHeight / 2;
+            }
+        }
+
+        // 9. Side Details Drawer & HUD
+        let isEditingInfo = false;
+        function toggleEditMode() {
+            isEditingInfo = !isEditingInfo;
+            const titleEl = document.getElementById('panel-title');
+            const descEl = document.getElementById('panel-desc');
+            const editIcon = document.getElementById('edit-icon');
+            const saveStatus = document.getElementById('save-status');
+
+            if (isEditingInfo) {
+                titleEl.contentEditable = "true";
+                descEl.contentEditable = "true";
+                titleEl.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+                descEl.style.backgroundColor = "rgba(255, 255, 255, 0.05)";
+                titleEl.focus();
+                editIcon.className = "fa-solid fa-check";
+                editIcon.style.color = "#10b981";
+                editIcon.title = "Save Changes";
+                if (saveStatus) saveStatus.style.display = "none";
+            } else {
+                titleEl.contentEditable = "false";
+                descEl.contentEditable = "false";
+                titleEl.style.backgroundColor = "transparent";
+                descEl.style.backgroundColor = "transparent";
+                editIcon.className = "fa-solid fa-pen-to-square";
+                editIcon.style.color = "var(--text-muted)";
+                editIcon.title = "Edit Title & Description";
+
+                // Save to state
+                const nodeIndex = nodes.findIndex(n => n.id === focusId);
+                if (nodeIndex !== -1) {
+                    const node = nodes[nodeIndex];
+                    node.title = titleEl.innerText;
+                    node.desc = descEl.innerText;
+                    
+                    const nodeDom = document.getElementById(`node-${focusId}`);
+                    if (nodeDom) {
+                        const img = nodeDom.querySelector('img');
+                        if (img) img.alt = titleEl.innerText;
+                    }
+
+                    // Save to Room via AndroidBridge / localStorage fallback
+                    if (node.snapId) {
+                        if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.updateSnap === 'function') {
+                            AndroidBridge.updateSnap(node.snapId, node.title, node.desc);
+                        } else {
+                            try {
+                                const saved = localStorage.getItem('pixelsnap_full_snaps');
+                                if (saved) {
+                                    const snaps = JSON.parse(saved);
+                                    const snapIndex = snaps.findIndex(s => s.id === node.snapId);
+                                    if (snapIndex !== -1) {
+                                        snaps[snapIndex].caption = node.title;
+                                        localStorage.setItem('pixelsnap_full_snaps', JSON.stringify(snaps));
+                                    }
+                                }
+                            } catch (e) {
+                                console.error("Failed to update snap in localStorage: ", e);
+                            }
+                        }
+                    }
+                }
+
+                if (saveStatus) {
+                    saveStatus.style.display = "inline";
+                    setTimeout(() => {
+                        saveStatus.style.display = "none";
+                    }, 1500);
+                }
+                showToast("Moment updated successfully!");
+            }
+        }
+
+        function openInfoPanel(node) {
+            // Cancel editing if panel changes
+            if (isEditingInfo) {
+                toggleEditMode();
+            }
+
+            const panel = document.getElementById('detail-panel');
+            document.getElementById('panel-title').innerText = node.title;
+            document.getElementById('panel-image').src = node.src;
+            document.getElementById('panel-desc').innerText = node.desc;
+            
+            // Clear and build tags
+            const tagContainer = document.getElementById('panel-tags');
+            tagContainer.innerHTML = '';
+            node.tags.forEach(tag => {
+                const el = document.createElement('div');
+                el.className = 'tag';
+                el.innerText = tag.startsWith('#') ? tag : `#${tag}`;
+                tagContainer.appendChild(el);
+            });
+
+            // Set details metadata
+            document.getElementById('meta-resolution').innerText = `${Math.floor(10 + Math.random() * 4)} MP`;
+            document.getElementById('meta-size').innerText = `${(2.2 + Math.random() * 3).toFixed(1)} MB`;
+
+            // Toggle Details button based on AndroidBridge
+            const nativeDetailBtn = document.getElementById('btn-native-detail');
+            if (nativeDetailBtn) {
+                if (node.snapId && typeof AndroidBridge !== 'undefined') {
+                    nativeDetailBtn.style.display = 'inline-block';
+                } else {
+                    nativeDetailBtn.style.display = 'none';
+                }
+            }
+
+            panel.classList.add('open');
+        }
+
+        function closeInfoPanel() {
+            if (isEditingInfo) {
+                toggleEditMode();
+            }
+            document.getElementById('detail-panel').classList.remove('open');
+        }
+
+        function triggerMagicEdit() {
+            showToast("AI Magic Editor applied details enhancement...");
+            const enhancedText = `[Enhanced by Magic Editor] Raw exposure corrected. Shadow noise erased. Fine details extracted via G4 computational models.`;
+            const desc = document.getElementById('panel-desc');
+            desc.innerHTML = `<strong>[Enhanced by Magic Editor]</strong> Raw exposure corrected. Shadow noise erased. Fine details extracted via G4 computational models.`;
+            
+            const nodeIndex = nodes.findIndex(n => n.id === focusId);
+            if (nodeIndex !== -1) {
+                nodes[nodeIndex].desc = enhancedText;
+            }
+        }
+
+        function openNativeDetail() {
+            const activeNode = nodes.find(n => n.id === focusId);
+            if (activeNode && activeNode.snapId && typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.openSnapDetail === 'function') {
+                AndroidBridge.openSnapDetail(activeNode.snapId);
+            }
+        }
+
+        function shareMoment() {
+            const activeNode = nodes.find(n => n.id === focusId);
+            if (activeNode && activeNode.snapId && typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.shareSnap === 'function') {
+                AndroidBridge.shareSnap(activeNode.snapId);
+                return;
+            }
+            if (navigator.share) {
+                navigator.share({
+                    title: activeNode.title,
+                    text: activeNode.desc,
+                    url: activeNode.src
+                }).then(() => {
+                    showToast("Moment shared successfully!");
+                }).catch(err => {
+                    console.warn("Share aborted:", err);
+                });
+            } else {
+                // Clipboard copy mock fallback
+                navigator.clipboard.writeText(activeNode.src).then(() => {
+                    showToast("Image link copied to clipboard!");
+                });
+            }
+        }
+
+        // 10. Immersive Fullscreen Lightbox
+        function openLightbox(node) {
+            const lightbox = document.getElementById('lightbox');
+            const img = document.getElementById('lightbox-image');
+            img.src = node.src;
+            lightbox.classList.add('open');
+            closeInfoPanel();
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('open');
+            document.getElementById('lightbox-img-wrapper').classList.remove('lightbox-enhanced');
+            document.getElementById('btn-magic-filter').classList.remove('active');
+        }
+
+        function toggleMagicFilter() {
+            const wrapper = document.getElementById('lightbox-img-wrapper');
+            const btn = document.getElementById('btn-magic-filter');
+            wrapper.classList.toggle('lightbox-enhanced');
+            const isActive = wrapper.classList.contains('lightbox-enhanced');
+            btn.classList.toggle('active', isActive);
+            showToast(isActive ? "Ultra Contrast filter applied" : "Contrast filter removed");
+        }
+
+        // 11. Uploader & Ingestion Handler
+        function triggerFileInput() {
+            document.getElementById('image-upload').click();
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length === 0) return;
+            importFiles(files);
+        }
+
+        function importFiles(fileList) {
+            let addedCount = 0;
+            const aiCaptions = [
+                "Tensor G4 AI: Ultra HDR exposure balancing applied. Shadow noise suppressed.",
+                "Pixel AI: Scene details recognized. Lifted highlights and dynamically corrected white balance.",
+                "Tensor G4: Stacking resolved 8 raw frames. MacroFocus tracking kept details sharp.",
+                "Pixel Snap AI: High-contrast gradient color profile mapped successfully with deep OLED darks."
+            ];
+
+            for (let i = 0; i < fileList.length; i++) {
+                const file = fileList[i];
+                if (!file.type.startsWith('image/')) continue;
+
+                const url = URL.createObjectURL(file);
+                const randomCaption = aiCaptions[Math.floor(Math.random() * aiCaptions.length)];
+                
+                // Append new image to database
+                images.push({
+                    src: url,
+                    title: file.name.split('.')[0],
+                    tags: ["Imported", "Tensor AI", "Local"],
+                    desc: `${randomCaption} File size: ${(file.size / (1024 * 1024)).toFixed(1)} MB.`
+                });
+                addedCount++;
+            }
+
+            if (addedCount > 0) {
+                // Reconstruct graph nodes
+                buildGraph(images);
+                rebuildDOM();
+                recalculateLayout();
+                
+                // Auto focus the newest added node
+                selectNode(nodes.length - 1);
+                showToast(`Successfully added ${addedCount} snap(s) to Web`);
+            }
+        }
+
+        // Drag-and-Drop Ingestion Listeners
+        window.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.add('active');
+        });
+
+        window.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            // Trigger check to prevent jitter on child nodes hovering
+            if (e.clientX === 0 && e.clientY === 0) {
+                document.getElementById('drop-zone').classList.remove('active');
+            }
+        });
+
+        document.getElementById('drop-zone').addEventListener('dragleave', () => {
+            document.getElementById('drop-zone').classList.remove('active');
+        });
+
+        window.addEventListener('drop', (e) => {
+            e.preventDefault();
+            document.getElementById('drop-zone').classList.remove('active');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                importFiles(files);
+            }
+        });
+
+        // Toast Popup Trigger Helper
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // 12. Floating Background Stars Animation (120Hz Friendly Canvas)
+        const bgCanvas = document.getElementById('bg-canvas');
+        const bgCtx = bgCanvas.getContext('2d');
+        let stars = [];
+
+        function resizeCanvas() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+            initStars();
+        }
+
+        function initStars() {
+            stars = [];
+            const starCount = Math.floor(window.innerWidth * window.innerHeight / 15000);
+            for (let i = 0; i < starCount; i++) {
+                stars.push({
+                    x: Math.random() * bgCanvas.width,
+                    y: Math.random() * bgCanvas.height,
+                    size: Math.random() * 1.5 + 0.5,
+                    opacity: Math.random() * 0.5 + 0.2,
+                    speed: Math.random() * 0.15 + 0.05
+                });
+            }
+        }
+
+        function drawStars() {
+            bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            
+            // Draw dark space grid lines
+            bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            bgCtx.lineWidth = 1;
+            const gridSize = 80;
+            
+            for (let x = 0; x < bgCanvas.width; x += gridSize) {
+                bgCtx.beginPath();
+                bgCtx.moveTo(x, 0);
+                bgCtx.lineTo(x, bgCanvas.height);
+                bgCtx.stroke();
+            }
+            for (let y = 0; y < bgCanvas.height; y += gridSize) {
+                bgCtx.beginPath();
+                bgCtx.moveTo(0, y);
+                bgCtx.lineTo(bgCanvas.width, y);
+                bgCtx.stroke();
+            }
+
+            // Draw drifting space dust particles
+            stars.forEach(star => {
+                star.y -= star.speed;
+                if (star.y < 0) {
+                    star.y = bgCanvas.height;
+                    star.x = Math.random() * bgCanvas.width;
+                }
+                bgCtx.fillStyle = `rgba(255, 255, 255, ${star.opacity})`;
+                bgCtx.beginPath();
+                bgCtx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                bgCtx.fill();
+            });
+
+            requestAnimationFrame(drawStars);
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        drawStars();
+
+        window.loadAndroidSnaps = function(jsonStr) {
+            try {
+                const snaps = JSON.parse(jsonStr);
+                if (snaps && snaps.length > 0) {
+                    images = snaps.map(s => ({
+                        id: s.id,
+                        src: s.imagePath.startsWith("http") || s.imagePath.startsWith("file") ? s.imagePath : "file://" + s.imagePath,
+                        title: s.caption || "Untitled Moment",
+                        tags: s.tags || ["PixelSnap"],
+                        desc: s.caption || "Captured on Pixel 9"
+                    }));
+                    buildGraph(images);
+                    rebuildDOM();
+                    recalculateLayout();
+                    resetView();
+                    // Set default dynamic accent theme
+                    setTimeout(() => {
+                        const defaultActiveNode = document.getElementById('node-0');
+                        if (defaultActiveNode) {
+                            const img = defaultActiveNode.querySelector('img');
+                            if (img && img.complete) {
+                                extractThemeColor(img);
+                            }
+                        }
+                    }, 100);
+                }
+            } catch(e) {
+                console.error("Failed to load snaps: ", e);
+            }
+        };
+
+        // 13. Application Bootstrapper
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof AndroidBridge !== 'undefined' && typeof AndroidBridge.getSnapsJson === 'function') {
+                const snapsJson = AndroidBridge.getSnapsJson();
+                if (snapsJson && snapsJson.length > 2) {
+                    window.loadAndroidSnaps(snapsJson);
+                } else {
+                    buildGraph(images);
+                }
+            } else {
+                // If not in Android, try loading from localStorage first
+                try {
+                    const saved = localStorage.getItem('pixelsnap_full_snaps');
+                    if (saved) {
+                        const localSnaps = JSON.parse(saved);
+                        if (localSnaps && localSnaps.length > 0) {
+                            images = localSnaps.map(s => ({
+                                id: s.id,
+                                src: s.imageData,
+                                title: s.caption || "Untitled Moment",
+                                tags: s.tags || ["PixelSnap"],
+                                desc: s.caption || "Captured on Pixel 9"
+                            }));
+                        }
+                    }
+                } catch(e) {
+                    console.error("Failed to load snaps from localStorage: ", e);
+                }
+                buildGraph(images);
+            }
+            rebuildDOM();
+            recalculateLayout();
+            resetView();
+            physicsTick();
+
+            // Set default dynamic accent theme
+            const defaultActiveNode = document.getElementById('node-0');
+            if (defaultActiveNode) {
+                const img = defaultActiveNode.querySelector('img');
+                if (img && img.complete) {
+                    extractThemeColor(img);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
