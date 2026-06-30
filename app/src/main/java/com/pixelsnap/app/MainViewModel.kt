@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     private val repository: SnapRepository
+    private val memoryWeaverAi = com.pixelsnap.app.ai.MemoryWeaverAi()
     
     val snaps: StateFlow<List<Snap>>
     
@@ -37,8 +38,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /** Preferred for live camera captures — returns the created Snap (with real ID) synchronously to caller. */
-    suspend fun saveFromSavedFile(path: String, caption: String = "", tags: List<String> = emptyList()): com.pixelsnap.app.data.Snap {
-        return repository.saveSnapFromSavedFile(path, caption, tags)
+    suspend fun saveFromSavedFile(path: String, caption: String = "", baseTags: List<String> = emptyList()): com.pixelsnap.app.data.Snap {
+        // AI Tagging via MemoryWeaver
+        val aiTags = memoryWeaverAi.analyzeAndTag(path)
+        val combinedTags = (baseTags + aiTags).distinct()
+        
+        return repository.saveSnapFromSavedFile(path, caption, combinedTags)
     }
     
     fun saveFromBitmap(bitmap: Bitmap, caption: String = "", tags: List<String> = emptyList()) {

@@ -2,6 +2,8 @@ package com.pixelsnap.app.data
 
 import androidx.room.TypeConverter
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.decodeFromString
 
 class Converters {
     private val json = Json { ignoreUnknownKeys = true }

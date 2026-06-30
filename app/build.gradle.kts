@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.detekt)
 }
 
 android {
@@ -61,6 +62,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended")
 
     // CameraX - excellent on Pixel
     implementation(libs.androidx.camera.core)
@@ -79,6 +81,13 @@ dependencies {
 
     // Serialization for simple tag lists etc.
     implementation(libs.kotlinx.serialization.json)
+
+    // On-Device AI: ML Kit Image Labeling (MemoryWeaver)
+    implementation(libs.mlkit.image.labeling)
+    implementation(libs.kotlinx.coroutines.play.services)
+    
+    // Monetization: RevenueCat (Integration Harbinger)
+    implementation(libs.revenuecat.purchases)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

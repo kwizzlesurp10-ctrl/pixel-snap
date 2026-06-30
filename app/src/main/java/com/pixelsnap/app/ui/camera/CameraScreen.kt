@@ -2,13 +2,21 @@ package com.pixelsnap.app.ui.camera
 
 import android.Manifest
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.label.ImageLabeling
+import com.google.mlkit.vision.label.defaults.ImageLabelerOptions
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,29 +26,14 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-
-/**
- * Full-featured CameraScreen (opposite of MVP).
- * In the complete version this will support:
- * - Photo, Video (with Audio Magic Eraser), Portrait, Night modes
- * - Real-time Pixel AI suggestions overlay
- * - Multiple lenses + computational modes
- * - Shake detection + haptics (already partially implemented)
- * See preview.html for the rich client-side demo of these features.
- */
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import com.pixelsnap.app.MainViewModel
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
-import java.util.concurrent.Executor
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CameraScreen(
     viewModel: MainViewModel,
@@ -61,9 +54,12 @@ fun CameraScreen(
     var imageCapture: ImageCapture? by remember { mutableStateOf(null) }
     var isCapturing by remember { mutableStateOf(false) }
     
+    var captureMode by remember { mutableStateOf("Photo") }
+    var showAiMenu by remember { mutableStateOf(false) }
+    var liveTags by remember { mutableStateOf<List<String>>(emptyList()) }
+    
     val previewView = remember { PreviewView(context) }
     
-    // Check / request permission
     LaunchedEffect(Unit) {
         val granted = ContextCompat.checkSelfPermission(
             context, Manifest.permission.CAMERA
@@ -74,13 +70,38 @@ fun CameraScreen(
         }
     }
     
+    if (showAiMenu) {
+        ModalBottomSheet(onDismissRequest = { showAiMenu = false }) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text("Pixel AI Tools", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 16.dp))
+                val aiTools = listOf(
+                    "Describe Scene" to "Full scene understanding + mood",
+                    "Magic Editor" to "Remove objects, perfect lighting",
+                    "Best Take" to "Pick the perfect frame (video)",
+                    "Add Me" to "Insert yourself into group shots",
+                    "Audio Magic Eraser" to "Clean background noise",
+                    "Story Mode" to "Turn snaps into a short narrative"
+                )
+                aiTools.forEach { (title, subtitle) ->
+                    ListItem(
+                        headlineContent = { Text(title) },
+                        supportingContent = { Text(subtitle) },
+                        modifier = Modifier.clickable {
+                            showAiMenu = false
+                            // Trigger AI capture
+                        }
+                    )
+                }
+            }
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .navigationBarsPadding()
+            .padding(bottom = 16.dp)
     ) {
-        // Top bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -89,17 +110,33 @@ fun CameraScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Camera",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
+                "Capture",
+                style = MaterialTheme.typography.headlineMedium
             )
-            TextButton(onClick = onNavigateToGallery) {
-                Text("Gallery", color = MaterialTheme.colorScheme.primary)
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(modifier = Modifier.padding(4.dp)) {
+                    listOf("Photo", "Video", "Portrait").forEach { mode ->
+                        val selected = captureMode == mode
+                        Box(
+                            modifier = Modifier
+                                .clickable { captureMode = mode }
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text(
+                                text = mode,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
             }
         }
         
         if (hasCameraPermission) {
-            // Camera preview
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -111,11 +148,11 @@ fun CameraScreen(
                     modifier = Modifier.fillMaxSize()
                 )
                 
-                // Subtle overlay labels (Pixel feel)
-                Column(
+                Row(
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(16.dp)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Surface(
                         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
@@ -127,10 +164,35 @@ fun CameraScreen(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                         )
                     }
+                    IconButton(onClick = { /* Toggle Flash */ }) {
+                        Icon(Icons.Default.FlashOn, contentDescription = "Flash", tint = androidx.compose.ui.graphics.Color.White)
+                    }
+                }
+                
+                if (liveTags.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        liveTags.take(3).forEach { tag ->
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f),
+                                shape = RoundedCornerShape(16.dp)
+                            ) {
+                                Text(
+                                    tag.uppercase(),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
             
-            // Capture controls
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -141,15 +203,10 @@ fun CameraScreen(
                     horizontalArrangement = Arrangement.spacedBy(28.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Gallery shortcut
-                    OutlinedButton(
-                        onClick = onNavigateToGallery,
-                        shape = RoundedCornerShape(999.dp)
-                    ) {
-                        Text("Gallery")
+                    TextButton(onClick = { /* Retake logic */ }) {
+                        Text("Retake")
                     }
                     
-                    // Big capture (uses proper file-based capture for valid JPEGs)
                     Button(
                         onClick = {
                             val capture = imageCapture ?: return@Button
@@ -165,13 +222,14 @@ fun CameraScreen(
                                 object : ImageCapture.OnImageSavedCallback {
                                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                                         scope.launch {
-                                            val caption = generateLocalCaption()
-                                            val tags = listOf("pixel9", "moment")
+                                            val caption = listOf(
+                                                "A quiet, perfectly timed moment.",
+                                                "The light on the Pixel 9 really makes this one sing.",
+                                                "Simple scene. Extraordinary detail."
+                                            ).random()
+                                            
+                                            val savedSnap = viewModel.saveFromSavedFile(photoFile.absolutePath, caption, listOf("pixel9", captureMode.lowercase()))
 
-                                            // New preferred path returns the real Snap with correct ID
-                                            val savedSnap = viewModel.saveFromSavedFile(photoFile.absolutePath, caption, tags)
-
-                                            // Haptics (Pixel 9 excellent vibration)
                                             val vibrator = context.getSystemService(android.os.Vibrator::class.java)
                                             vibrator?.let {
                                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -183,13 +241,12 @@ fun CameraScreen(
                                             }
 
                                             isCapturing = false
-                                            onSnapSaved(savedSnap.id)  // real ID for reliable navigation
+                                            onSnapSaved(savedSnap.id)
                                         }
                                     }
 
                                     override fun onError(exception: ImageCaptureException) {
                                         isCapturing = false
-                                        // TODO: show error snackbar (SnackbarHostState can be added to screen)
                                     }
                                 }
                             )
@@ -209,56 +266,28 @@ fun CameraScreen(
                         }
                     }
                     
-                    // Analyze (live frame) button - also file-based
                     Button(
-                        onClick = {
-                            val capture = imageCapture ?: return@Button
-                            isCapturing = true
-
-                            val snapsDir = File(context.filesDir, "snaps").apply { if (!exists()) mkdirs() }
-                            val photoFile = File(snapsDir, "${UUID.randomUUID()}.jpg")
-                            val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
-
-                            capture.takePicture(
-                                outputOptions,
-                                ContextCompat.getMainExecutor(context),
-                                object : ImageCapture.OnImageSavedCallback {
-                                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                                        scope.launch {
-                                            val caption = generateLocalCaption()
-                                            val tags = listOf("ai", "pixel9")
-
-                                            val savedSnap = viewModel.saveFromSavedFile(photoFile.absolutePath, caption, tags)
-                                            isCapturing = false
-                                            onSnapSaved(savedSnap.id)
-                                        }
-                                    }
-
-                                    override fun onError(exception: ImageCaptureException) {
-                                        isCapturing = false
-                                    }
-                                }
-                            )
-                        },
+                        onClick = { showAiMenu = true },
                         shape = RoundedCornerShape(999.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                         )
                     ) {
-                        Text("Analyze")
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("Pixel AI")
                     }
                 }
                 
                 Text(
-                    "Capture uses your Pixel 9 camera pipeline",
-                    style = MaterialTheme.typography.bodySmall,
+                    "${captureMode.uppercase()} MODE • PIXEL 9 EXCLUSIVE",
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.padding(top = 12.dp)
                 )
             }
         } else {
-            // Permission request UI
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -269,11 +298,6 @@ fun CameraScreen(
             ) {
                 Text("Camera permission needed", style = MaterialTheme.typography.titleLarge)
                 Spacer(Modifier.height(12.dp))
-                Text(
-                    "PixelSnap needs the camera to capture beautiful moments on your Pixel 9.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(Modifier.height(24.dp))
                 Button(onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) }) {
                     Text("Grant Camera Access")
                 }
@@ -281,45 +305,54 @@ fun CameraScreen(
         }
     }
     
-    // Bind camera when we have permission
     LaunchedEffect(hasCameraPermission) {
         if (hasCameraPermission) {
-            bindCameraUseCases(context, lifecycleOwner, previewView) { capture ->
+            bindCameraUseCases(context, lifecycleOwner, previewView, { tags -> liveTags = tags }) { capture ->
                 imageCapture = capture
             }
         }
     }
 }
 
-private fun generateLocalCaption(): String {
-    val options = listOf(
-        "A quiet, perfectly timed moment.",
-        "The light on the Pixel 9 really makes this one sing.",
-        "Simple scene. Extraordinary detail.",
-        "Captured the feeling perfectly.",
-        "One of those frames that makes you smile later."
-    )
-    return options.random()
-}
-
 private fun bindCameraUseCases(
     context: android.content.Context,
     lifecycleOwner: androidx.lifecycle.LifecycleOwner,
     previewView: PreviewView,
+    onTagsUpdated: (List<String>) -> Unit,
     onImageCaptureReady: (ImageCapture) -> Unit
 ) {
     val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
     
     cameraProviderFuture.addListener({
         val cameraProvider = cameraProviderFuture.get()
-        
         val preview = Preview.Builder().build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
-        
         val imageCapture = ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
             .build()
+            
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            
+        val labeler = ImageLabeling.getClient(ImageLabelerOptions.DEFAULT_OPTIONS)
+        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context)) { imageProxy ->
+            val mediaImage = imageProxy.image
+            if (mediaImage != null) {
+                @androidx.annotation.OptIn(androidx.camera.core.ExperimentalGetImage::class)
+                val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
+                labeler.process(image)
+                    .addOnSuccessListener { labels ->
+                        onTagsUpdated(labels.filter { it.confidence > 0.65f }.map { it.text })
+                    }
+                    .addOnCompleteListener {
+                        imageProxy.close()
+                    }
+            } else {
+                imageProxy.close()
+            }
+        }
         
         val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
         
@@ -329,11 +362,12 @@ private fun bindCameraUseCases(
                 lifecycleOwner,
                 cameraSelector,
                 preview,
-                imageCapture
+                imageCapture,
+                imageAnalysis
             )
             onImageCaptureReady(imageCapture)
         } catch (e: Exception) {
-            // Log or show error
+            // Error handling
         }
     }, ContextCompat.getMainExecutor(context))
 }

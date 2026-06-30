@@ -10,10 +10,14 @@ import com.pixelsnap.app.MainViewModel
 import com.pixelsnap.app.ui.camera.CameraScreen
 import com.pixelsnap.app.ui.detail.SnapDetailScreen
 import com.pixelsnap.app.ui.gallery.GalleryScreen
+import com.pixelsnap.app.ui.memories.MemoriesScreen
+import com.pixelsnap.app.ui.studio.StudioScreen
 
 sealed class Screen(val route: String) {
     object Camera : Screen("camera")
     object Gallery : Screen("gallery")
+    object Memories : Screen("memories")
+    object Studio : Screen("studio")
     object Detail : Screen("detail/{snapId}") {
         fun createRoute(snapId: String) = "detail/$snapId"
     }
@@ -22,11 +26,13 @@ sealed class Screen(val route: String) {
 @Composable
 fun PixelSnapNavGraph(
     navController: NavHostController,
-    viewModel: MainViewModel
+    viewModel: MainViewModel,
+    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
 ) {
     NavHost(
         navController = navController,
-        startDestination = Screen.Camera.route
+        startDestination = Screen.Camera.route,
+        modifier = modifier
     ) {
         composable(Screen.Camera.route) {
             CameraScreen(
@@ -39,7 +45,6 @@ fun PixelSnapNavGraph(
                     }
                 },
                 onSnapSaved = { snapId ->
-                    // Navigate straight to detail after analyze/capture
                     navController.navigate(Screen.Detail.createRoute(snapId))
                 }
             )
@@ -54,9 +59,19 @@ fun PixelSnapNavGraph(
                 onNewSnapClick = {
                     navController.navigate(Screen.Camera.route) {
                         popUpTo(Screen.Gallery.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 }
             )
+        }
+
+        composable(Screen.Memories.route) {
+            MemoriesScreen(viewModel = viewModel)
+        }
+
+        composable(Screen.Studio.route) {
+            StudioScreen(viewModel = viewModel)
         }
         
         composable(
